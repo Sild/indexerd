@@ -1,0 +1,10 @@
+[package]
+name = "indexerd"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+indexerd-derive = { path = "indexerd-derive" }
+mysql_cdc = "0.2.1"
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+serde = { version = "1.0.118", features = ["derive"] }
