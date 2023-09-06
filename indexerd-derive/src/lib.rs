@@ -1,8 +1,10 @@
 extern crate proc_macro;
 extern crate syn;
+extern crate inflections;
+
 #[macro_use]
 extern crate quote;
-
+use inflections::case::to_snake_case;
 use proc_macro::TokenStream;
 
 #[proc_macro_derive(MysqlObject)]
@@ -18,17 +20,21 @@ pub fn mysql_object(input: TokenStream) -> TokenStream {
 }
 
 fn mysql_object_impl(ast: &syn::DeriveInput) -> quote::Tokens {
-    let name = &ast.ident;
+    let class_name = &ast.ident;
+    let table_name = to_snake_case(&class_name.to_string());
+
     quote! {
-        impl MysqlObject for #name {
+        impl MysqlObject for #class_name {
             fn table<'life>() -> &'life str {
-                return &"table_name";
+                &#table_name
             }
-            fn from_select() {
-                println!("create_from_select for {}", stringify!(#name));
+            fn from_select() -> Self {
+                println!("create_from_select for {}", stringify!(#class_name));
+                #class_name::default()
             }
-            fn from_slave() {
-                println!("create_from_slave for {}", stringify!(#name));
+            fn from_slave() -> Self {
+                println!("create_from_slave for {}", stringify!(#class_name));
+                #class_name::default()
             }
         }
     }

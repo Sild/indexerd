@@ -1,65 +1,53 @@
 #[macro_use]
 extern crate indexerd_derive;
-mod objects;
-mod config;
+extern crate hwloc;
 
-use mysql_cdc::binlog_client::BinlogClient;
-use mysql_cdc::binlog_options::BinlogOptions;
+mod objects;
+mod store;
+mod config;
+mod engine;
+mod db;
+use hwloc::Topology;
+
+
 use mysql_cdc::errors::Error;
-use mysql_cdc::events::binlog_event::BinlogEvent;
-use mysql_cdc::replica_options::ReplicaOptions;
-use mysql_cdc::ssl_mode::SslMode;
-use crate::config::DBConfig;
+mod server;
+
+
 
 use crate::objects::MysqlObject;
 
-fn run_slave(conf: DBConfig) -> Result<(), Error> {
-    let _options: BinlogOptions = BinlogOptions::from_start();
-    let options: BinlogOptions = BinlogOptions::from_end();
+fn check_cpu() {
+    let topo = Topology::new();
 
-    let options = ReplicaOptions {
-        port: conf.port,
-        username: conf.username,
-        password: conf.password,
-        database: Some(conf.db_name),
-        blocking: true,
-        ssl_mode: SslMode::Disabled,
-        binlog: options,
-        ..Default::default()
-    };
+    // Check if Process Binding for CPUs is supported
+    println!("CPU Binding (current process) supported: {}", topo.support().cpu().set_current_process());
+    println!("CPU Binding (any process) supported: {}", topo.support().cpu().set_process());
+    // Check if Thread Binding for CPUs is supported
+    println!("CPU Binding (current thread) supported: {}", topo.support().cpu().set_current_thread());
+    println!("CPU Binding (any thread) supported: {}", topo.support().cpu().set_thread());
 
-    let mut client = BinlogClient::new(options);
-
-    for result in client.replicate()? {
-        let (_header, event) = result?;
-        // println!("{:#?}", header);
-        // println!("{:#?}", event);
-        match event {
-            BinlogEvent::WriteRowsEvent(_) => {
-                println!("write event")
-            }
-            _ => {println!("ignore event")}
-        }
-
-        // You process an event here
-
-        // After you processed the event, you need to update replication position
-
-    }
-    Ok(())
+    // Debug Print all the Support Flags
+    println!("All Flags:\n{:?}", topo.support());
 }
 
 fn main() -> Result<(), Error> {
+    check_cpu();
 
-    objects::campaign::Campaign::from_select();
-    objects::campaign::Campaign::from_slave();
-    println!("{}", objects::campaign::Campaign::table());
+    let c1 = objects::Campaign::from_select();
+    let p1 = objects::Package::from_select();
+    let pad1 = objects::Pad::from_select();
 
-    let db_conf = match config::DBConfig::from_file("configs/dev.json") {
-        Ok(conf) => conf,
-        Err(e) => panic!("Fail to read config: {}", e)
-    };
-    println!("{:?}", db_conf);
-    run_slave(db_conf)
+    let mut data_manager = store::data_manager::DataManager::default();
+    data_manager.insert(c1);
+    data_manager.insert(p1);
+    data_manager.insert(pad1);
 
+    let mut server = server::Server::default();
+    server.run_admin_service(8089)?;
+    server.init_engine();
+    server.run_user_service(8088)?;
+    println!("user service started");
+
+    db::run_slave()
 }

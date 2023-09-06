@@ -1,3 +1,5 @@
+cargo-features = ["profile-rustflags"]
+
 [package]
 name = "indexerd"
 version = "0.1.0"
@@ -8,3 +10,10 @@ indexerd-derive = { path = "indexerd-derive" }
 mysql_cdc = "0.2.1"
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 serde = { version = "1.0.118", features = ["derive"] }
+actix-web = "4"
+hwloc = "0.5.0" # https://nitschinger.at/Binding-Threads-And-Processes-to-CPUs-in-Rust/
+tokio = "1.32.0"
+
+[profile.mac]
+inherits = "dev"
+rustflags = ["-L", "/opt/homebrew/Cellar/hwloc/2.9.2/lib/"]

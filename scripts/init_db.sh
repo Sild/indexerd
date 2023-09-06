@@ -14,3 +14,15 @@ mysql_exec="${mysql_exec} ${db_name} -e"
 # campaign
 ${mysql_exec} "DROP TABLE IF EXISTS campaign;"
 ${mysql_exec} "CREATE TABLE campaign (id int, name varchar(255), package_id int);"
+
+# package
+${mysql_exec} "DROP TABLE IF EXISTS package;"
+${mysql_exec} "CREATE TABLE package (id int, name varchar(255));"
+
+# pad
+${mysql_exec} "DROP TABLE IF EXISTS pad;"
+${mysql_exec} "CREATE TABLE pad (id int, name varchar(255));"
+
+# pad_relation
+${mysql_exec} "DROP TABLE IF EXISTS pad_relation;"
+${mysql_exec} "CREATE TABLE pad_relation (id int, object_id int, object_type varchar(255), positive bool);"
