@@ -13,7 +13,8 @@ serde = { version = "1.0.118", features = ["derive"] }
 actix-web = "4"
 hwloc = "0.5.0" # https://nitschinger.at/Binding-Threads-And-Processes-to-CPUs-in-Rust/
 tokio = "1.32.0"
+ctrlc = "3.4.0"
 
-[profile.mac]
-inherits = "dev"
+[profile.dev]
+# inherits = "dev"
 rustflags = ["-L", "/opt/homebrew/Cellar/hwloc/2.9.2/lib/"]
