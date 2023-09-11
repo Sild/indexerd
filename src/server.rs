@@ -1,143 +1,126 @@
 extern crate actix_web;
+extern crate crossbeam_channel;
+extern crate tiny_http;
 extern crate tokio;
-use actix_web::web::service;
-use actix_web::{
-    get, http::KeepAlive, middleware::Logger, web, App, HttpResponse, HttpServer, Responder,
-};
-use std::ops::Deref;
+use crate::request::Request;
+use crate::{engine, helpers};
+use crossbeam_channel::{Receiver, Sender};
+use std::io::Error;
 use std::option::Option;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
-use std::{
-    io::{prelude::*, BufReader},
-    net::{TcpListener, TcpStream},
-    thread,
-    thread::JoinHandle,
-};
+use std::sync::Arc;
+use std::time::Duration;
+use std::{thread, thread::JoinHandle};
 
-#[derive(Default)]
 pub struct Server {
-    admin_port: u16,
-    user_port: u16,
     admin_service: Option<JoinHandle<()>>,
     user_service: Option<JoinHandle<()>>,
-    shutdown_flag: AtomicBool,
+    shutdown: Arc<AtomicBool>,
+    engine: engine::Engine,
 }
 
 impl Server {
-    pub async fn new(admin_port: u16, user_port: u16) -> Self {
-        Self {
-            admin_port,
-            user_port,
+    pub fn new(_admin_port: u16, _user_port: u16) -> Result<Server, Error> {
+        let (engine_req_transfer, engine_req_receiver): (Sender<Request>, Receiver<Request>) =
+            crossbeam_channel::bounded(1000);
+
+        let mut server = Self {
             admin_service: None,
             user_service: None,
-            shutdown_flag: AtomicBool::new(false),
+            shutdown: Arc::new(AtomicBool::new(false)),
+            engine: engine::Engine::new(engine_req_receiver),
+        };
+
+        let admin_service = server.run_service("127.0.0.1:8089", "admin", &engine_req_transfer)?;
+        server.admin_service = Some(admin_service);
+
+        server.init_engine()?;
+
+        let user_uservice = server.run_service("127.0.0.1:8088", "user", &engine_req_transfer)?;
+        server.user_service = Some(user_uservice);
+        Ok(server)
+    }
+
+    pub fn shutdown(&mut self) -> std::io::Result<()> {
+        println!("shutdown server...");
+
+        self.shutdown.store(true, Ordering::Relaxed);
+        println!("waiting for user service to stop...");
+        if let Some(handle) = self.user_service.take() {
+            handle.join().expect("fail to join user service thread");
         }
+
+        self.engine.shutdown();
+
+        println!("waiting for admin service to stop ...");
+        if let Some(handle) = self.admin_service.take() {
+            handle.join().expect("fail to join admin service thread");
+        }
+        println!("server stopped");
+
+        Ok(())
     }
-    // #[actix_web::main]
-    // pub fn start(&mut self) {
-    //
-    // }
+
+    fn init_engine(&self) -> std::io::Result<()> {
+        println!("engine is starting...");
+
+        println!("engine is ready");
+        Ok(())
+    }
+
+    fn run_service(
+        &self,
+        bind_addr: &str,
+        tag: &str,
+        engine_queue: &Sender<Request>,
+    ) -> std::io::Result<JoinHandle<()>> {
+        println!("{} service (bind: {}) starting...", tag, bind_addr);
+
+        let service = match tiny_http::Server::http(bind_addr) {
+            Ok(s) => s,
+            _ => panic!("Fail to start sevice for bind={}", bind_addr),
+        };
+        let engine_queue = engine_queue.clone();
+        let shutdown = self.shutdown.clone();
+        let th = thread::spawn(move || service_loop(service, engine_queue, shutdown));
+        println!("{} service (bind: {}) started.", tag, bind_addr);
+        Ok(th)
+    }
 }
 
-pub fn run(server: &Arc<Mutex<Server>>) -> std::io::Result<()> {
-    run_admin_service(&server, "127.0.0.1:8089")?;
-    init_engine(&server)?;
-    run_user_service(&server, "127.0.0.1:8088")?;
-    Ok(())
-}
-
-pub fn shutdown(server: &Arc<Mutex<Server>>) -> std::io::Result<()> {
-    println!("shutdown server...");
-
-    let mut user_serv: Option<JoinHandle<()>> = None;
-    let mut admin_serv: Option<JoinHandle<()>> = None;
-    {
-        let mut locked = server.lock().unwrap();
-        locked.shutdown_flag.store(true, Ordering::Relaxed);
-        user_serv = locked.user_service.take();
-        user_serv = locked.admin_service.take();
-    }
-    println!("waiting for user service to stop...");
-    if let Some(handle) = user_serv.take() {
-        handle
-            .handle
-            .join()
-            .expect("fail to join user service thread");
-    }
-    println!("waiting for admin service to stop ...");
-    if let Some(handle) = admin_serv.take() {
-        handle.join().expect("fail to join admin service thread");
-    }
-    println!("server stopped");
-
-    Ok(())
-}
-
-fn run_admin_service(server: &Arc<Mutex<Server>>, bind_addr: &str) -> std::io::Result<()> {
-    println!("admin service (bind: {}) starting...", bind_addr);
-    let local_server = server.clone();
-    let listener = TcpListener::bind(bind_addr).expect("fail to bind admin service");
-    let thread = thread::spawn(move || {
-        for stream in listener.incoming() {
-            match (stream) {
-                Ok(stream) => {
-                    if !handle_admin_connection(local_server.to_owned(), stream) {
-                        return;
-                    }
-                }
-                Err(e) => {
-                    println!("connection failed {}", e);
+fn service_loop(
+    service: tiny_http::Server,
+    engine_queue: Sender<Request>,
+    shutdown: Arc<AtomicBool>,
+) {
+    let mut shutdown_checker = helpers::ShutdownChecker::new(shutdown.clone());
+    loop {
+        match service.recv_timeout(Duration::from_millis(50)) {
+            Ok(Some(req)) => handle_connection(req, &engine_queue),
+            _ => {
+                if shutdown_checker.check_force() {
+                    return;
                 }
             }
         }
-    });
-    let mut locked_server = server.lock().unwrap();
-    locked_server.admin_service = Some(thread);
-    println!("admin service (bind: {}) started.", bind_addr);
-    Ok(())
-}
-
-fn run_user_service(server: &Arc<Mutex<Server>>, bind_addr: &str) -> std::io::Result<()> {
-    println!("user service (bind: {}) starting...", bind_addr);
-    let mut local_server = server.clone();
-    let listener = TcpListener::bind(bind_addr).unwrap();
-    let thread = thread::spawn(move || {
-        for stream in listener.incoming() {
-            let stream = stream.unwrap();
-            if !handle_user_connection(local_server.to_owned(), stream) {
-                return;
-            }
+        if shutdown_checker.check_force() {
+            return;
         }
-    });
-    let mut locked_server = server.lock().unwrap();
-    locked_server.user_service = Some(thread);
-    println!("user service (bind {}): started.", bind_addr);
-    Ok(())
-}
-
-fn init_engine(server: &Arc<Mutex<Server>>) -> std::io::Result<()> {
-    println!("engine is starting...");
-
-    println!("engine is ready");
-    Ok(())
-}
-
-fn handle_admin_connection(mut server: Arc<Mutex<Server>>, mut stream: TcpStream) -> bool {
-    if server.lock().unwrap().shutdown_flag.load(Ordering::Relaxed) {
-        return false;
     }
-    let response = "HTTP/1.1 200 OK\r\n\r\nHello admin";
-    stream.write_all(response.as_bytes()).unwrap();
-    true
 }
 
-fn handle_user_connection(server: Arc<Mutex<Server>>, mut stream: TcpStream) -> bool {
-    println!("Got new user connection");
-    if server.lock().unwrap().shutdown_flag.load(Ordering::Relaxed) {
-        return false;
+fn handle_connection(req: tiny_http::Request, queue: &Sender<Request>) {
+    println!(
+        "received request! method: {:?}, url: {:?}, headers: {:?}",
+        req.method(),
+        req.url(),
+        req.headers()
+    );
+
+    match queue.send(Request::new(req)) {
+        Err(e) => {
+            println!("Fail to add request to queue with err={}", e)
+        }
+        _ => {}
     }
-    let response = "HTTP/1.1 200 OK\r\n\r\nHello user";
-    stream.write_all(response.as_bytes()).unwrap();
-    true
 }

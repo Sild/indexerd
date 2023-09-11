@@ -2,7 +2,6 @@
 extern crate indexerd_derive;
 extern crate ctrlc;
 extern crate hwloc;
-use std::sync::{Arc, Mutex};
 mod config;
 mod db;
 mod engine;
@@ -11,11 +10,15 @@ mod store;
 use hwloc::Topology;
 
 use mysql_cdc::errors::Error;
+mod helpers;
+mod request;
 mod server;
+mod worker;
 
-use crate::objects::MysqlObject;
+// use crate::objects::MysqlObject;
+use crate::server::Server;
 
-fn check_cpu() {
+fn _check_cpu() {
     let topo = Topology::new();
 
     // Check if Process Binding for CPUs is supported
@@ -42,24 +45,23 @@ fn check_cpu() {
 }
 
 fn main() -> Result<(), Error> {
-    check_cpu();
+    // check_cpu();
 
-    let c1 = objects::Campaign::from_select();
-    let p1 = objects::Package::from_select();
-    let pad1 = objects::Pad::from_select();
+    // let c1 = objects::Campaign::from_select();
+    // let p1 = objects::Package::from_select();
+    // let pad1 = objects::Pad::from_select();
+    //
+    // let mut data_manager = store::data_manager::DataManager::default();
+    // data_manager.insert(c1);
+    // data_manager.insert(p1);
+    // data_manager.insert(pad1);
 
-    let mut data_manager = store::data_manager::DataManager::default();
-    data_manager.insert(c1);
-    data_manager.insert(p1);
-    data_manager.insert(pad1);
-
-    let mut server = Arc::new(Mutex::new(server::Server::default()));
-    server::run(&server)?;
-
+    let mut server = Server::new(8089, 8088)?;
     ctrlc::set_handler(move || {
         println!("received Ctrl+C!");
-        server::shutdown(&server);
+        server.shutdown().expect("fail to shutdown server properly");
     })
     .expect("Error setting Ctrl-C handler");
+
     db::run_slave()
 }

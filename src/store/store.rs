@@ -1,7 +1,6 @@
 use std::collections::HashMap;
-use std::fmt::Debug;
 
-use crate::objects::{Campaign, Pad, IdType, Package};
+use crate::objects::{Campaign, IdType, Package, Pad};
 use crate::store::aci::ActiveCampaignIndex;
 
 #[derive(Default)]
@@ -18,7 +17,7 @@ pub trait Storable<T> {
 #[derive(Default)]
 pub struct Store {
     raw_data: RawDataStorage,
-    aci: ActiveCampaignIndex,
+    _aci: ActiveCampaignIndex,
     pub name: String,
 }
 
@@ -44,11 +43,10 @@ impl Storable<Pad> for Store {
 }
 
 impl RawDataStorage {
+    #![allow(dead_code)]
     pub fn get<T>(&self, id: &IdType) -> Option<&Campaign> {
         return self.campaigns.get(&id);
     }
 }
 
-impl Store {
-}
-
+impl Store {}
