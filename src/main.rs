@@ -2,6 +2,7 @@
 extern crate indexerd_derive;
 extern crate ctrlc;
 extern crate hwloc;
+extern crate log;
 mod config;
 mod db;
 mod engine;
@@ -14,6 +15,7 @@ mod helpers;
 mod request;
 mod server;
 mod worker;
+use log::LevelFilter;
 
 // use crate::objects::MysqlObject;
 use crate::server::Server;
@@ -45,6 +47,10 @@ fn _check_cpu() {
 }
 
 fn main() -> Result<(), Error> {
+    let mut builder = env_logger::Builder::from_default_env();
+    builder.filter_level(LevelFilter::Trace);
+    builder.init();
+
     // check_cpu();
 
     // let c1 = objects::Campaign::from_select();
@@ -58,7 +64,7 @@ fn main() -> Result<(), Error> {
 
     let mut server = Server::new(8089, 8088)?;
     ctrlc::set_handler(move || {
-        println!("received Ctrl+C!");
+        log::info!("received SIGINT");
         server.shutdown().expect("fail to shutdown server properly");
     })
     .expect("Error setting Ctrl-C handler");

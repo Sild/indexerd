@@ -42,29 +42,29 @@ impl Server {
     }
 
     pub fn shutdown(&mut self) -> std::io::Result<()> {
-        println!("shutdown server...");
+        log::info!("shutdown server...");
 
         self.shutdown.store(true, Ordering::Relaxed);
-        println!("waiting for user service to stop...");
+        log::info!("waiting for user service to stop...");
         if let Some(handle) = self.user_service.take() {
             handle.join().expect("fail to join user service thread");
         }
 
         self.engine.shutdown();
 
-        println!("waiting for admin service to stop ...");
+        log::info!("waiting for admin service to stop ...");
         if let Some(handle) = self.admin_service.take() {
             handle.join().expect("fail to join admin service thread");
         }
-        println!("server stopped");
+        log::info!("server stopped");
 
         Ok(())
     }
 
     fn init_engine(&self) -> std::io::Result<()> {
-        println!("engine is starting...");
+        log::info!("engine is starting...");
 
-        println!("engine is ready");
+        log::info!("engine is ready");
         Ok(())
     }
 
@@ -74,16 +74,16 @@ impl Server {
         tag: &str,
         engine_queue: &Sender<Request>,
     ) -> std::io::Result<JoinHandle<()>> {
-        println!("{} service (bind: {}) starting...", tag, bind_addr);
+        log::info!("{} service (bind: {}) starting...", tag, bind_addr);
 
         let service = match tiny_http::Server::http(bind_addr) {
             Ok(s) => s,
-            _ => panic!("Fail to start sevice for bind={}", bind_addr),
+            _ => panic!("Fail to start service for bind={}", bind_addr),
         };
         let engine_queue = engine_queue.clone();
         let shutdown = self.shutdown.clone();
         let th = thread::spawn(move || service_loop(service, engine_queue, shutdown));
-        println!("{} service (bind: {}) started.", tag, bind_addr);
+        log::info!("{} service (bind: {}) started.", tag, bind_addr);
         Ok(th)
     }
 }
@@ -110,7 +110,7 @@ fn service_loop(
 }
 
 fn handle_connection(req: tiny_http::Request, queue: &Sender<Request>) {
-    println!(
+    log::debug!(
         "received request! method: {:?}, url: {:?}, headers: {:?}",
         req.method(),
         req.url(),
@@ -119,7 +119,7 @@ fn handle_connection(req: tiny_http::Request, queue: &Sender<Request>) {
 
     match queue.send(Request::new(req)) {
         Err(e) => {
-            println!("Fail to add request to queue with err={}", e)
+            log::warn!("Fail to add request to queue with err={}", e)
         }
         _ => {}
     }

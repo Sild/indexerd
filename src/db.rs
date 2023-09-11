@@ -1,17 +1,18 @@
+use crate::config::DBConfig;
+use log::log;
 use mysql_cdc::binlog_client::BinlogClient;
 use mysql_cdc::binlog_options::BinlogOptions;
 use mysql_cdc::errors::Error;
 use mysql_cdc::events::binlog_event::BinlogEvent;
 use mysql_cdc::replica_options::ReplicaOptions;
 use mysql_cdc::ssl_mode::SslMode;
-use crate::config::DBConfig;
 
 pub fn run_slave() -> Result<(), Error> {
     let conf = match DBConfig::from_file("configs/dev.json") {
         Ok(conf) => conf,
-        Err(e) => panic!("Fail to read config: {}", e)
+        Err(e) => panic!("Fail to read config: {}", e),
     };
-    println!("{:?}", conf);
+    log::info!("{:?}", conf);
     let _options: BinlogOptions = BinlogOptions::from_start();
     let options: BinlogOptions = BinlogOptions::from_end();
 
@@ -34,15 +35,16 @@ pub fn run_slave() -> Result<(), Error> {
         // println!("{:#?}", event);
         match event {
             BinlogEvent::WriteRowsEvent(_) => {
-                println!("write event")
+                log::trace!("write event")
             }
-            _ => {println!("ignore event")}
+            _ => {
+                log::trace!("ignore event")
+            }
         }
 
         // You process an event here
 
         // After you processed the event, you need to update replication position
-
     }
     Ok(())
 }

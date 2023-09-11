@@ -23,21 +23,21 @@ pub struct Store {
 
 impl Storable<Campaign> for Store {
     fn add(&mut self, obj: &Campaign) {
-        println!("got new object: {:?}", obj);
+        log::trace!("got new object: {:?}", obj);
         self.raw_data.campaigns.insert(obj.id, obj.clone());
     }
 }
 
 impl Storable<Package> for Store {
     fn add(&mut self, obj: &Package) {
-        println!("got new object: {:?}", obj);
+        log::trace!("got new object: {:?}", obj);
         self.raw_data.package.insert(obj.id, obj.clone());
     }
 }
 
 impl Storable<Pad> for Store {
     fn add(&mut self, obj: &Pad) {
-        println!("got new object: {:?}", obj);
+        log::trace!("got new object: {:?}", obj);
         self.raw_data.pads.insert(obj.id, obj.clone());
     }
 }

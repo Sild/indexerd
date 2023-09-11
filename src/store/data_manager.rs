@@ -14,7 +14,7 @@ impl DataManager {
     where
         Store: Storable<T>,
     {
-        println!("dm call insert for {:?}", obj);
+        log::trace!("dm call insert for {:?}", obj);
         self.write_store.add(&obj);
         // self.raw_data.get<>(&13);
         // obj.apply_to_store(self);

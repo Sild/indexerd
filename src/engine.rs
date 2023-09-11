@@ -1,5 +1,5 @@
 extern crate crossbeam_channel;
-
+extern crate log;
 use crate::request::Request;
 use crate::store::store::Store;
 
@@ -32,10 +32,10 @@ impl Engine {
 
     // pub fn
     pub fn shutdown(&mut self) {
-        println!("stopping engine...");
+        log::info!("stopping engine...");
         for worker in self.workers.iter_mut() {
             worker::shutdown(worker);
         }
-        println!("engine stopped");
+        log::info!("engine stopped");
     }
 }

@@ -48,7 +48,7 @@ fn worker_loop(worker: WorkerPtr, queue: crossbeam_channel::Receiver<Request>) {
 }
 
 fn process(worker: &WorkerPtr, req: Request) {
-    println!("worker {} got request", worker.read().unwrap().num);
+    log::debug!("worker {} got request", worker.read().unwrap().num);
     req.respond(&String::from(format!(
         "The number is {}",
         worker.read().unwrap().num
