@@ -51,7 +51,10 @@ fn _check_cpu() {
 
 fn main() -> Result<(), Error> {
     let mut builder = env_logger::Builder::from_default_env();
-    builder.filter_level(LevelFilter::Trace);
+    if std::env::var("RUST_LOG").is_err() {
+        // override default 'error'
+        builder.filter_level(LevelFilter::Debug);
+    }
     builder.init();
 
     // check_cpu();

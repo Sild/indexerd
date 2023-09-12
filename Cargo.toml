@@ -22,3 +22,7 @@ env_logger = "0.10.0"
 [profile.dev]
 # inherits = "dev"
 rustflags = ["-L", "/opt/homebrew/Cellar/hwloc/2.9.2/lib/"]
+
+[profile.release]
+# inherits = "dev"
+rustflags = ["-L", "/opt/homebrew/Cellar/hwloc/2.9.2/lib/"]
