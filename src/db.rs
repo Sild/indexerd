@@ -1,13 +1,16 @@
 use crate::config::DBConfig;
-use log::log;
+use crate::helpers;
 use mysql_cdc::binlog_client::BinlogClient;
+use mysql_cdc::binlog_events::BinlogEvents;
 use mysql_cdc::binlog_options::BinlogOptions;
 use mysql_cdc::errors::Error;
 use mysql_cdc::events::binlog_event::BinlogEvent;
 use mysql_cdc::replica_options::ReplicaOptions;
 use mysql_cdc::ssl_mode::SslMode;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
-pub fn run_slave() -> Result<(), Error> {
+pub fn run_slave(shutdown: Arc<AtomicBool>) -> Result<(), Error> {
     let conf = match DBConfig::from_file("configs/dev.json") {
         Ok(conf) => conf,
         Err(e) => panic!("Fail to read config: {}", e),
@@ -21,30 +24,40 @@ pub fn run_slave() -> Result<(), Error> {
         username: conf.username,
         password: conf.password,
         database: Some(conf.db_name),
-        blocking: true,
+        blocking: false,
         ssl_mode: SslMode::Disabled,
         binlog: options,
         ..Default::default()
     };
 
+    let mut shutdown_checker = helpers::ShutdownChecker::new(shutdown);
     let mut client = BinlogClient::new(options);
+    loop {
+        match client.replicate() {
+            Ok(events) => {
+                process_event(events);
+            }
+            Err(_) => {
+                log::warn!("Got error from slabe stream")
+            }
+        }
+        if shutdown_checker.check() {
+            break;
+        }
+    }
+    Ok(())
+}
 
-    for result in client.replicate()? {
-        let (_header, event) = result?;
-        // println!("{:#?}", header);
-        // println!("{:#?}", event);
-        match event {
+fn process_event(events: BinlogEvents) {
+    for event in events {
+        let (_header, ev_type) = event.expect("got event with error");
+        match ev_type {
             BinlogEvent::WriteRowsEvent(_) => {
                 log::trace!("write event")
             }
             _ => {
-                log::trace!("ignore event")
+                log::trace!("ignore event: {:?}", ev_type)
             }
         }
-
-        // You process an event here
-
-        // After you processed the event, you need to update replication position
     }
-    Ok(())
 }

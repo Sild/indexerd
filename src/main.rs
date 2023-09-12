@@ -8,7 +8,10 @@ mod db;
 mod engine;
 mod objects;
 mod store;
+
 use hwloc::Topology;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use mysql_cdc::errors::Error;
 mod helpers;
@@ -63,11 +66,14 @@ fn main() -> Result<(), Error> {
     // data_manager.insert(pad1);
 
     let mut server = Server::new(8089, 8088)?;
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let shutdown_local = shutdown.clone();
     ctrlc::set_handler(move || {
         log::info!("received SIGINT");
+        shutdown_local.store(true, Ordering::Relaxed);
         server.shutdown().expect("fail to shutdown server properly");
     })
     .expect("Error setting Ctrl-C handler");
 
-    db::run_slave()
+    db::run_slave(shutdown)
 }
