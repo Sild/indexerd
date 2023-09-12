@@ -30,7 +30,7 @@ pub fn run_slave(shutdown: Arc<AtomicBool>) -> Result<(), Error> {
         ..Default::default()
     };
 
-    let mut shutdown_checker = helpers::ShutdownChecker::new(shutdown);
+    let mut _sd_checker = helpers::ShutdownChecker::new(shutdown);
     let mut client = BinlogClient::new(options);
     loop {
         match client.replicate() {
@@ -41,9 +41,9 @@ pub fn run_slave(shutdown: Arc<AtomicBool>) -> Result<(), Error> {
                 log::warn!("Got error from slabe stream")
             }
         }
-        if shutdown_checker.check() {
-            break;
-        }
+        // if sd_checker.check() {
+        //     break;
+        // }
     }
     Ok(())
 }

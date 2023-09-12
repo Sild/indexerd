@@ -4,24 +4,27 @@ use crate::request::Request;
 use crate::store::store::Store;
 
 use crate::worker;
-use crate::worker::Worker;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::thread::JoinHandle;
 
 pub struct Engine {
     _store: Arc<Store>,
-    workers: Vec<worker::WorkerPtr>,
+    shutdown: Arc<AtomicBool>,
+    workers: Vec<JoinHandle<()>>,
 }
 
 impl Engine {
     pub fn new(http_queue: crossbeam_channel::Receiver<Request>) -> Self {
         let mut engine = Engine {
             _store: Arc::new(Store::default()),
+            shutdown: Arc::new(AtomicBool::new(false)),
             workers: Vec::new(),
         };
 
         for worker_num in 0..10 {
-            let worker = Worker::new(worker_num, http_queue.clone());
-            engine.workers.push(worker);
+            let th = worker::run(worker_num, http_queue.clone(), engine.shutdown.clone());
+            engine.workers.push(th);
         }
         engine
     }
@@ -33,8 +36,9 @@ impl Engine {
     // pub fn
     pub fn shutdown(&mut self) {
         log::info!("stopping engine...");
-        for worker in self.workers.iter_mut() {
-            worker::shutdown(worker);
+        self.shutdown.store(true, Ordering::Relaxed);
+        for th in self.workers.drain(..) {
+            th.join().unwrap()
         }
         log::info!("engine stopped");
     }

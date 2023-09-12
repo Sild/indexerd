@@ -1,72 +1,49 @@
 use crate::helpers;
 use crate::request::Request;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 use std::thread;
+use std::thread::JoinHandle;
 use std::time::Duration;
 
-pub struct Worker {
+pub struct WorkerData {
     num: i32,
-    thread: Option<thread::JoinHandle<()>>,
+    task_queue: crossbeam_channel::Receiver<Request>,
+}
+
+pub fn run(
+    num: i32,
+    task_queue: crossbeam_channel::Receiver<Request>,
     shutdown: Arc<AtomicBool>,
+) -> JoinHandle<()> {
+    let worker_data = WorkerData { num, task_queue };
+    thread::spawn(move || worker_loop(worker_data, shutdown))
 }
 
-pub type WorkerPtr = Arc<RwLock<Worker>>;
-
-impl Worker {
-    pub fn new(num: i32, queue: crossbeam_channel::Receiver<Request>) -> WorkerPtr {
-        let worker = Arc::new(RwLock::new(Worker {
-            num,
-            shutdown: Arc::new(AtomicBool::new(false)),
-            thread: None,
-        }));
-        let worker_ref = worker.clone();
-        let th = thread::spawn(move || worker_loop(worker_ref, queue));
-        worker.write().unwrap().thread = Some(th);
-        worker
-    }
-}
-
-fn worker_loop(worker: WorkerPtr, queue: crossbeam_channel::Receiver<Request>) {
-    let mut shutdown_checker =
-        helpers::ShutdownChecker::new(worker.read().unwrap().shutdown.clone());
+fn worker_loop(mut worker_data: WorkerData, shutdown: Arc<AtomicBool>) {
+    let mut sd_checker = helpers::ShutdownChecker::new(shutdown);
     loop {
-        match queue.recv_timeout(Duration::from_millis(50)) {
+        match worker_data
+            .task_queue
+            .recv_timeout(Duration::from_millis(50))
+        {
             Ok(req) => {
-                process(&worker, req);
+                process(&mut worker_data, req);
             }
             Err(_) => {
-                if shutdown_checker.check_force() {
-                    return;
+                if sd_checker.check_force() {
+                    break;
                 }
             }
         }
-        if shutdown_checker.check() {
-            return;
+        if sd_checker.check() {
+            break;
         }
     }
+    log::info!("worker {} stopped", worker_data.num)
 }
 
-fn process(worker: &WorkerPtr, req: Request) {
-    log::debug!("worker {} got request", worker.read().unwrap().num);
-    req.respond(&String::from(format!(
-        "The number is {}",
-        worker.read().unwrap().num
-    )))
-}
-
-pub fn shutdown(worker: &WorkerPtr) {
-    let mut th;
-    let num;
-    {
-        let mut locked = worker.write().unwrap();
-        locked.shutdown.store(true, Ordering::Relaxed);
-        th = locked.thread.take();
-        num = locked.num;
-    }
-
-    if let Some(handle) = th.take() {
-        let msg = format!("fail to join worker with id={}", num);
-        handle.join().expect(msg.as_str());
-    }
+fn process(worker_data: &WorkerData, req: Request) {
+    log::debug!("worker {} got request", worker_data.num);
+    req.respond(&format!("The number is {}", worker_data.num))
 }

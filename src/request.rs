@@ -9,8 +9,8 @@ impl Request {
         Request { raw_req: req }
     }
 
-    pub fn respond(self, body: &String) {
-        let resp = tiny_http::Response::from_string(body.as_str());
+    pub fn respond(self, body: &str) {
+        let resp = tiny_http::Response::from_string(body);
         _ = self.raw_req.respond(resp);
     }
 }
