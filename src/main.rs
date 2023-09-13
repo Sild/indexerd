@@ -50,12 +50,21 @@ fn _check_cpu() {
 }
 
 fn main() -> Result<(), Error> {
+    // init logger first
     let mut builder = env_logger::Builder::from_default_env();
     if std::env::var("RUST_LOG").is_err() {
         // override default 'error'
         builder.filter_level(LevelFilter::Debug);
     }
     builder.init();
+
+    // get config then
+    let mut conf_path = String::from("configs/dev.json");
+    let args: Vec<_> = std::env::args().collect();
+    if args.len() > 1 {
+        conf_path = args.get(1).expect("fail to extract argument").clone()
+    }
+    log::info!("Using config from path={}", conf_path);
 
     // check_cpu();
 
@@ -78,5 +87,5 @@ fn main() -> Result<(), Error> {
     })
     .expect("Error setting Ctrl-C handler");
 
-    db::run_slave(shutdown)
+    db::run_slave(shutdown, conf_path)
 }

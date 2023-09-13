@@ -3,3 +3,4 @@
 /target
 /indexerd-derive/target
 Cargo.lock
+/configs/test.json
