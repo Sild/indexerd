@@ -16,7 +16,6 @@ pub fn run_slave(shutdown: Arc<AtomicBool>, conf_path: String) -> Result<(), Err
         Ok(conf) => conf,
         Err(e) => panic!("Fail to read config: {}", e),
     };
-    log::info!("{:?}", conf);
     let _options: BinlogOptions = BinlogOptions::from_start();
     let options: BinlogOptions = BinlogOptions::from_end();
 

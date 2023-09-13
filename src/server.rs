@@ -31,12 +31,12 @@ impl Server {
             engine: engine::Engine::new(task_rcv_queue),
         };
 
-        let admin_service = server.run_service("127.0.0.1:8089", "admin", &task_snd_queue)?;
+        let admin_service = server.run_service("0.0.0.0:8089", "admin", &task_snd_queue)?;
         server.admin_service = Some(admin_service);
 
         server.init_engine()?;
 
-        let user_uservice = server.run_service("127.0.0.1:8088", "user", &task_snd_queue)?;
+        let user_uservice = server.run_service("0.0.0.0:8088", "user", &task_snd_queue)?;
         server.user_service = Some(user_uservice);
         Ok(server)
     }
