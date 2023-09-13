@@ -1,6 +1,6 @@
-use std::io::Read;
-use serde::{Deserialize};
+use serde::Deserialize;
 use serde_json::Result;
+use std::io::Read;
 #[derive(Debug, Deserialize)]
 pub struct DBConfig {
     pub host: String,
@@ -16,6 +16,6 @@ impl DBConfig {
         let mut file_content = String::new();
         file.read_to_string(&mut file_content).unwrap();
         let conf: DBConfig = serde_json::from_str(file_content.as_str())?;
-        Result::Ok(conf)
+        Ok(conf)
     }
 }

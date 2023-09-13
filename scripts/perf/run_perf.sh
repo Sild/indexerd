@@ -28,10 +28,15 @@ fi
 # git clone https://github.com/wg/wrk && cd wrk && make && cp wrk /usr/local/bin
 cd "$(dirname "$(realpath -- "$0")")" || (echo "Fail to change dir" && exit 1)
 
-echo "100 connections, 5 threads"
-wrk -c 100 -d 5 -t 5 --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" 2>&1
+echo "warming up..."
+wrk -c 100 -d 5 -t 5 --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" >/dev/null 2>&1
+
 echo "200 connections, 10 threads"
 wrk -c 200 -d 5 -t 10 --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" 2>&1
+echo "400 connections, 20 threads"
+wrk -c 200 -d 5 -t 10 --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" 2>&1
+echo "800 connections, 40 threads"
+wrk -c 800 -d 5 -t 40 --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" 2>&1
 
 # shutdown server if required
 if ${run_server}; then

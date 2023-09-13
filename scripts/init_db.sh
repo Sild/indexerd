@@ -3,8 +3,8 @@
 db_host="${INDEXERD_DB_HOST}"
 db_port="${INDEXERD_DB_PORT}"
 username="${INDEXERD_DB_USER}"
-export MYSQL_PWD="${INDEXERD_DB_PASS}"
 db_name="${INDEXERD_DB_NAME}"
+export MYSQL_PWD="${INDEXERD_DB_PASS}"
 
 # init db/exec string
 mysql_exec="mysql --host=${db_host} -P ${db_port} -u${username} --verbose"

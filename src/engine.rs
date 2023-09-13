@@ -40,6 +40,7 @@ impl Engine {
             let th = worker::run(worker_data, engine.shutdown_workers.clone());
             engine.workers.push(th);
             engine.ctl_queues.push(ctl_queue_snd);
+            log::info!("worker {} started", worker_num);
         }
         engine
     }
