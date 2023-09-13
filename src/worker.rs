@@ -27,6 +27,9 @@ pub fn run(worker_data: WorkerData, shutdown: Arc<AtomicBool>) -> JoinHandle<()>
 fn worker_loop(mut worker_data: WorkerData, shutdown: Arc<AtomicBool>) {
     let mut sd_checker = helpers::ShutdownChecker::new(shutdown);
     loop {
+        if let Ok(ctl_task) = worker_data.ctl_task_queue.try_recv() {
+            ctl_task(&mut worker_data)
+        }
         match worker_data
             .task_queue
             .recv_timeout(Duration::from_millis(50))
