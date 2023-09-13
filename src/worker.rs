@@ -1,22 +1,26 @@
 use crate::helpers;
 use crate::request::Request;
+use crate::store::store;
+use crossbeam_channel::Receiver;
 use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
+pub type ControlTask = Box<dyn FnOnce(&mut WorkerData) + Send + 'static>;
+// pub trait ControlTask {
+//     pub fn (&mut WorkerData);
+// }
+
 pub struct WorkerData {
-    num: i32,
-    task_queue: crossbeam_channel::Receiver<Request>,
+    pub num: i32,
+    pub task_queue: Receiver<Request>,
+    pub ctl_task_queue: Receiver<ControlTask>,
+    pub store: Arc<RwLock<store::Store>>,
 }
 
-pub fn run(
-    num: i32,
-    task_queue: crossbeam_channel::Receiver<Request>,
-    shutdown: Arc<AtomicBool>,
-) -> JoinHandle<()> {
-    let worker_data = WorkerData { num, task_queue };
+pub fn run(worker_data: WorkerData, shutdown: Arc<AtomicBool>) -> JoinHandle<()> {
     thread::spawn(move || worker_loop(worker_data, shutdown))
 }
 
