@@ -11,13 +11,10 @@ pub struct IndexParams {
 }
 
 #[derive(Default)]
-pub struct IndexResult {
-
-}
+pub struct IndexResult {}
 
 impl ActiveCampaignIndex {
     pub fn _get(_params: &IndexParams) -> IndexResult {
-        return IndexResult::default()
+        IndexResult::default()
     }
 }
-

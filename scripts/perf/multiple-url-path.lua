@@ -27,7 +27,7 @@ end
 -- Load URL paths from file
 paths = load_url_paths_from_file("paths.txt")
 
-print("multiplepaths: Found " .. #paths .. " paths")
+-- print("multiplepaths: Found " .. #paths .. " paths")
 
 -- Initialize the paths array iterator
 counter = 0

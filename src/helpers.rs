@@ -34,6 +34,6 @@ impl ShutdownChecker {
             return self.shutdown.load(Ordering::Relaxed);
         }
         self.last_check_ts = cur_ts;
-        return false;
+        false
     }
 }

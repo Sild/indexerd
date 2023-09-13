@@ -21,22 +21,22 @@ pub struct Server {
 
 impl Server {
     pub fn new(_admin_port: u16, _user_port: u16) -> Result<Server, Error> {
-        let (engine_req_transfer, engine_req_receiver): (Sender<Request>, Receiver<Request>) =
+        let (task_snd_queue, task_rcv_queue): (Sender<Request>, Receiver<Request>) =
             crossbeam_channel::bounded(1000);
 
         let mut server = Self {
             admin_service: None,
             user_service: None,
             shutdown: Arc::new(AtomicBool::new(false)),
-            engine: engine::Engine::new(engine_req_receiver),
+            engine: engine::Engine::new(task_rcv_queue),
         };
 
-        let admin_service = server.run_service("127.0.0.1:8089", "admin", &engine_req_transfer)?;
+        let admin_service = server.run_service("127.0.0.1:8089", "admin", &task_snd_queue)?;
         server.admin_service = Some(admin_service);
 
         server.init_engine()?;
 
-        let user_uservice = server.run_service("127.0.0.1:8088", "user", &engine_req_transfer)?;
+        let user_uservice = server.run_service("127.0.0.1:8088", "user", &task_snd_queue)?;
         server.user_service = Some(user_uservice);
         Ok(server)
     }
@@ -72,7 +72,7 @@ impl Server {
         &self,
         bind_addr: &str,
         tag: &str,
-        engine_queue: &Sender<Request>,
+        task_snd_queue: &Sender<Request>,
     ) -> std::io::Result<JoinHandle<()>> {
         log::info!("{} service (bind: {}) starting...", tag, bind_addr);
 
@@ -80,7 +80,7 @@ impl Server {
             Ok(s) => s,
             _ => panic!("Fail to start service for bind={}", bind_addr),
         };
-        let engine_queue = engine_queue.clone();
+        let engine_queue = task_snd_queue.clone();
         let shutdown = self.shutdown.clone();
         let th = thread::spawn(move || service_loop(service, engine_queue, shutdown));
         log::info!("{} service (bind: {}) started.", tag, bind_addr);
@@ -117,10 +117,7 @@ fn handle_connection(req: tiny_http::Request, queue: &Sender<Request>) {
         req.headers()
     );
 
-    match queue.send(Request::new(req)) {
-        Err(e) => {
-            log::warn!("Fail to add request to queue with err={}", e)
-        }
-        _ => {}
+    if let Err(e) = queue.send(Request::new(req)) {
+        log::warn!("Fail to add request to queue with err={}", e)
     }
 }

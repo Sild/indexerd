@@ -45,7 +45,7 @@ impl Storable<Pad> for Store {
 impl RawDataStorage {
     #![allow(dead_code)]
     pub fn get<T>(&self, id: &IdType) -> Option<&Campaign> {
-        return self.campaigns.get(&id);
+        return self.campaigns.get(id);
     }
 }
 
