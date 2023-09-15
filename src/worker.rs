@@ -1,7 +1,9 @@
+extern crate rand;
 use crate::helpers;
 use crate::request::Request;
 use crate::store::store;
 use crossbeam_channel::Receiver;
+use rand::Rng;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, RwLock};
 use std::thread;
@@ -52,5 +54,54 @@ fn worker_loop(mut worker_data: WorkerData, shutdown: Arc<AtomicBool>) {
 
 fn process(worker_data: &WorkerData, req: Request) {
     log::debug!("worker {} got request", worker_data.num);
-    req.respond(&format!("The number is {}", worker_data.num))
+    let res = mock_task(&worker_data);
+    req.respond(&format!("The number is {}, result={}", worker_data.num, res))
+}
+
+fn mock_task(_worker_data: &WorkerData) -> String {
+    let mut rng = rand::thread_rng();
+    let matrix_size = 20;
+
+    let mut matrix_a = Vec::new();
+    for i in 0..matrix_size {
+        matrix_a.push(vec![]);
+        for _ in 0..matrix_size {
+            matrix_a[i].push(rng.gen_range(0.0..999.0));
+        }
+    }
+
+    let mut matrix_b = Vec::new();
+    for i in 0..matrix_size {
+        matrix_b.push(vec![]);
+        for _ in 0..matrix_size {
+            matrix_b[i].push(rng.gen_range(0.0..999.0));
+        }
+    }
+    let res = matrix_multiply(&matrix_a, &matrix_b);
+
+    let mut answer = String::new();
+    for row in res.iter() {
+        for elem in row.iter() {
+            answer += &format!("{},", elem);
+        }
+    }
+    answer
+}
+
+fn matrix_multiply(a: &Vec<Vec<f64>>, b: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+
+    let mut result = Vec::new();
+
+    for i in 0..a.len() {
+        let mut row = Vec::new();
+        for j in 0..b[0].len() {
+            let mut cell = 0.0;
+            for k in 0..a[0].len() {
+                cell += a[i][k] * b[k][j];
+            }
+            row.push(cell);
+        }
+        result.push(row);
+    }
+    result
 }
