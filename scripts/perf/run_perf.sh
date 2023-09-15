@@ -36,14 +36,14 @@ echo "warming up..."
 wrk -c 100 -d 5 -t 5 --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" >/dev/null 2>&1
 
 echo ""
-echo -e "${GREEN}running wrk with 200 connections, 10 threads:${NC}"
+echo -e "${GREEN}running wrk with 200 connections, 8 threads:${NC}"
 wrk -c 200 -d 5 -t 8 --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" 2>&1
 echo ""
-echo -e "${GREEN}running wrk with 400 connections, 20 threads:${NC}"
-wrk -c 200 -d 5 -t 16 --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" 2>&1
+echo -e "${GREEN}running wrk with 600 connections, 16 threads:${NC}"
+wrk -c 600 -d 5 -t 16 --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" 2>&1
 echo ""
-echo -e "${GREEN}running wrk with 800 connections, 40 threads:${NC}"
-wrk -c 800 -d 5 -t 16 --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" 2>&1
+echo -e "${GREEN}running wrk with 1200 connections, 32 threads:${NC}"
+wrk -c 1200 -d 5 -t 32 --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" 2>&1
 
 # shutdown server if required
 if ${run_server}; then
