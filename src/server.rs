@@ -1,14 +1,18 @@
 extern crate actix_web;
 extern crate crossbeam_channel;
+extern crate hwloc2;
+extern crate libc;
 extern crate tiny_http;
 extern crate tokio;
 use crate::request::Request;
 use crate::{engine, helpers};
 use crossbeam_channel::{Receiver, Sender};
+use hwloc2::{CpuBindFlags, CpuSet, ObjectType, Topology};
 use std::io::Error;
+use std::ops::Deref;
 use std::option::Option;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::{thread, thread::JoinHandle};
 
@@ -31,12 +35,12 @@ impl Server {
             engine: engine::Engine::new(task_rcv_queue),
         };
 
-        let admin_service = server.run_service("0.0.0.0:8089", "admin", &task_snd_queue)?;
+        let admin_service = server.run_service("0.0.0.0:8089", "admin_srv", &task_snd_queue)?;
         server.admin_service = Some(admin_service);
 
         server.init_engine()?;
 
-        let user_uservice = server.run_service("0.0.0.0:8088", "user", &task_snd_queue)?;
+        let user_uservice = server.run_service("0.0.0.0:8088", "user_srv", &task_snd_queue)?;
         server.user_service = Some(user_uservice);
         Ok(server)
     }
@@ -74,6 +78,8 @@ impl Server {
         tag: &str,
         task_snd_queue: &Sender<Request>,
     ) -> std::io::Result<JoinHandle<()>> {
+        let topo = Arc::new(Mutex::new(Topology::new().unwrap()));
+
         log::info!("{} service (bind: {}) starting...", tag, bind_addr);
 
         let service = match tiny_http::Server::http(bind_addr) {
@@ -82,9 +88,23 @@ impl Server {
         };
         let engine_queue = task_snd_queue.clone();
         let shutdown = self.shutdown.clone();
-        let th = thread::spawn(move || service_loop(service, engine_queue, shutdown));
+
+        let th = thread::Builder::new().name(tag.to_string()).spawn(move || {
+            let tid = unsafe { libc::pthread_self() };
+
+            let mut locked_topo = topo.lock().unwrap();
+
+            let bind_to = cpuset_for_core(locked_topo.deref(), 0);
+
+            locked_topo
+                .set_cpubind_for_thread(tid, bind_to, CpuBindFlags::CPUBIND_THREAD)
+                .unwrap();
+
+            service_loop(service, engine_queue, shutdown);
+        });
+
         log::info!("{} service (bind: {}) started.", tag, bind_addr);
-        Ok(th)
+        Ok(th.unwrap())
     }
 }
 
@@ -119,5 +139,14 @@ fn handle_connection(req: tiny_http::Request, queue: &Sender<Request>) {
 
     if let Err(e) = queue.send(Request::new(req)) {
         log::warn!("Fail to add request to queue with err={}", e)
+    }
+}
+
+fn cpuset_for_core(topology: &Topology, idx: usize) -> CpuSet {
+    let cores = (*topology).objects_with_type(&ObjectType::Core).unwrap();
+    println!("cores: {}", cores[0]);
+    match cores.get(idx) {
+        Some(val) => val.cpuset().unwrap(),
+        None => panic!("No Core found with id {}", idx),
     }
 }
