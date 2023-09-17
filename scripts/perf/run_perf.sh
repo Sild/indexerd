@@ -35,15 +35,17 @@ cd "$(dirname "$(realpath -- "$0")")" || (echo "Fail to change dir" && exit 1)
 echo "warming up..."
 wrk -c 100 -d 5 -t 5 --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" >/dev/null 2>&1
 
-echo ""
-echo -e "${GREEN}running wrk with 200 connections, 8 threads:${NC}"
-wrk -c 200 -d 5 -t 8 --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" 2>&1
-echo ""
-echo -e "${GREEN}running wrk with 600 connections, 16 threads:${NC}"
-wrk -c 600 -d 5 -t 16 --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" 2>&1
-echo ""
-echo -e "${GREEN}running wrk with 1200 connections, 32 threads:${NC}"
-wrk -c 1200 -d 5 -t 32 --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" 2>&1
+run_wrk () {
+    conns=$1
+    threads=$2
+    echo ""
+    echo -e "${GREEN}running wrk with ${conns} connections, ${threads} threads:${NC}"
+    wrk -c ${conns} -d 5 -t ${threads} --latency --timeout=1s -s multiple-url-path.lua "${target_addr}" 2>&1
+}
+
+run_wrk 600 16
+run_wrk 1200 32
+run_wrk 1500 32
 
 # shutdown server if required
 if ${run_server}; then
