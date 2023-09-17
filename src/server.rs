@@ -1,14 +1,19 @@
 extern crate actix_web;
 extern crate crossbeam_channel;
+extern crate hwloc2;
+extern crate libc;
 extern crate tiny_http;
 extern crate tokio;
 use crate::request::Request;
 use crate::{engine, helpers};
 use crossbeam_channel::{Receiver, Sender};
+
+
 use std::io::Error;
+
 use std::option::Option;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc};
 use std::time::Duration;
 use std::{thread, thread::JoinHandle};
 
@@ -31,12 +36,12 @@ impl Server {
             engine: engine::Engine::new(task_rcv_queue),
         };
 
-        let admin_service = server.run_service("0.0.0.0:8089", "admin", &task_snd_queue)?;
+        let admin_service = server.run_service("0.0.0.0:8089", "admin_srv", &task_snd_queue)?;
         server.admin_service = Some(admin_service);
 
         server.init_engine()?;
 
-        let user_uservice = server.run_service("0.0.0.0:8088", "user", &task_snd_queue)?;
+        let user_uservice = server.run_service("0.0.0.0:8088", "user_srv", &task_snd_queue)?;
         server.user_service = Some(user_uservice);
         Ok(server)
     }
@@ -76,15 +81,28 @@ impl Server {
     ) -> std::io::Result<JoinHandle<()>> {
         log::info!("{} service (bind: {}) starting...", tag, bind_addr);
 
-        let service = match tiny_http::Server::http(bind_addr) {
-            Ok(s) => s,
-            _ => panic!("Fail to start service for bind={}", bind_addr),
-        };
         let engine_queue = task_snd_queue.clone();
         let shutdown = self.shutdown.clone();
-        let th = thread::spawn(move || service_loop(service, engine_queue, shutdown));
+        let bind_addr_local = String::from(bind_addr);
+        let tag_local = String::from(tag);
+        let th = thread::Builder::new().name(tag.to_string()).spawn(move || {
+            if let Err(err) = helpers::bind_thread(0) {
+                log::error!(
+                    "Fail to bind {} to core {} with err={:?}",
+                    tag_local,
+                    0,
+                    err
+                );
+            }
+            let service = match tiny_http::Server::http(bind_addr_local.as_str()) {
+                Ok(s) => s,
+                _ => panic!("Fail to start service for bind={}", bind_addr_local),
+            };
+            service_loop(service, engine_queue, shutdown);
+        });
+
         log::info!("{} service (bind: {}) started.", tag, bind_addr);
-        Ok(th)
+        Ok(th.unwrap())
     }
 }
 
@@ -117,7 +135,9 @@ fn handle_connection(req: tiny_http::Request, queue: &Sender<Request>) {
         req.headers()
     );
 
-    if let Err(e) = queue.send(Request::new(req)) {
+    let task = Request::new(req);
+
+    if let Err(e) = queue.send(task) {
         log::warn!("Fail to add request to queue with err={}", e)
     }
 }

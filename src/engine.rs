@@ -26,7 +26,7 @@ impl Engine {
             ctl_queues: Vec::new(),
         };
 
-        for worker_num in 0..10 {
+        for worker_num in 0..=2 {
             let (ctl_queue_snd, ctl_queue_rcv): (Sender<ControlTask>, Receiver<ControlTask>) =
                 crossbeam_channel::bounded(1000);
 
