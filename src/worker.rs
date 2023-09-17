@@ -25,7 +25,13 @@ pub struct WorkerData {
 pub fn run(worker_data: WorkerData, shutdown: Arc<AtomicBool>) -> JoinHandle<()> {
     thread::Builder::new()
         .name(format!("worker_{}", worker_data.num))
-        .spawn(move || worker_loop(worker_data, shutdown))
+        .spawn(move || {
+            if let Err(e) = helpers::bind_thread((worker_data.num + 1) as usize) {
+                log::error!("bind thread failed: {:?}", e);
+                return;
+            }
+            worker_loop(worker_data, shutdown)
+        })
         .unwrap()
 }
 
@@ -57,7 +63,7 @@ fn worker_loop(mut worker_data: WorkerData, shutdown: Arc<AtomicBool>) {
 
 fn process(worker_data: &WorkerData, req: Request) {
     log::debug!("worker {} got request", worker_data.num);
-    let res = String::from("res"); //mock_task(&worker_data);
+    let res = mock_task(&worker_data);
     req.respond(&format!(
         "The number is {}, result={}",
         worker_data.num, res
@@ -66,7 +72,7 @@ fn process(worker_data: &WorkerData, req: Request) {
 
 fn mock_task(_worker_data: &WorkerData) -> String {
     let mut rng = rand::thread_rng();
-    let matrix_size = 20;
+    let matrix_size = 5;
 
     let mut matrix_a = Vec::new();
     for i in 0..matrix_size {

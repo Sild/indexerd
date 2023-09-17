@@ -53,13 +53,13 @@ use crate::server::Server;
 fn cpu_check2() {
     let topo = Topology::new().unwrap();
 
-	for i in 0..topo.depth() {
-		println!("*** Objects at level {}", i);
+    for i in 0..topo.depth() {
+        println!("*** Objects at level {}", i);
 
-		for (idx, object) in topo.objects_at_depth(i).iter().enumerate() {
-			println!("{}: {}", idx, object);
-		}
-	}
+        for (idx, object) in topo.objects_at_depth(i).iter().enumerate() {
+            println!("{}: {}", idx, object);
+        }
+    }
 }
 
 fn main() -> Result<(), Error> {

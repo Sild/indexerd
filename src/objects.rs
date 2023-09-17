@@ -15,20 +15,20 @@ pub struct Campaign {
 #[derive(Debug, MysqlObject, Default, Clone)]
 pub struct Package {
     pub id: IdType,
-    pub name: String
+    pub name: String,
 }
 
 #[derive(Debug, MysqlObject, Default, Clone)]
 pub struct Pad {
     pub id: IdType,
-    pub name: String
+    pub name: String,
 }
 
 #[derive(Debug, MysqlObject, Default)]
 pub struct PadRelation {
     pub id: IdType,
     pub pad_id: IdType,
-    pub parent_pad_id: IdType
+    pub parent_pad_id: IdType,
 }
 
 #[derive(Debug, MysqlObject, Default)]

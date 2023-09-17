@@ -8,6 +8,7 @@ use crate::request::Request;
 use crate::{engine, helpers};
 use crossbeam_channel::{Receiver, Sender};
 use hwloc2::{CpuBindFlags, CpuSet, ObjectType, Topology};
+use std::borrow::BorrowMut;
 use std::io::Error;
 use std::ops::Deref;
 use std::option::Option;
@@ -78,28 +79,25 @@ impl Server {
         tag: &str,
         task_snd_queue: &Sender<Request>,
     ) -> std::io::Result<JoinHandle<()>> {
-        let topo = Arc::new(Mutex::new(Topology::new().unwrap()));
-
         log::info!("{} service (bind: {}) starting...", tag, bind_addr);
 
-        let service = match tiny_http::Server::http(bind_addr) {
-            Ok(s) => s,
-            _ => panic!("Fail to start service for bind={}", bind_addr),
-        };
         let engine_queue = task_snd_queue.clone();
         let shutdown = self.shutdown.clone();
-
+        let bind_addr_local = String::from(bind_addr);
+        let tag_local = String::from(tag);
         let th = thread::Builder::new().name(tag.to_string()).spawn(move || {
-            let tid = unsafe { libc::pthread_self() };
-
-            let mut locked_topo = topo.lock().unwrap();
-
-            let bind_to = cpuset_for_core(locked_topo.deref(), 0);
-
-            locked_topo
-                .set_cpubind_for_thread(tid, bind_to, CpuBindFlags::CPUBIND_THREAD)
-                .unwrap();
-
+            if let Err(err) = helpers::bind_thread(0) {
+                log::error!(
+                    "Fail to bind {} to core {} with err={:?}",
+                    tag_local,
+                    0,
+                    err
+                );
+            }
+            let service = match tiny_http::Server::http(bind_addr_local.as_str()) {
+                Ok(s) => s,
+                _ => panic!("Fail to start service for bind={}", bind_addr_local),
+            };
             service_loop(service, engine_queue, shutdown);
         });
 
@@ -137,16 +135,9 @@ fn handle_connection(req: tiny_http::Request, queue: &Sender<Request>) {
         req.headers()
     );
 
-    if let Err(e) = queue.send(Request::new(req)) {
-        log::warn!("Fail to add request to queue with err={}", e)
-    }
-}
+    let mut task = Request::new(req);
 
-fn cpuset_for_core(topology: &Topology, idx: usize) -> CpuSet {
-    let cores = (*topology).objects_with_type(&ObjectType::Core).unwrap();
-    println!("cores: {}", cores[0]);
-    match cores.get(idx) {
-        Some(val) => val.cpuset().unwrap(),
-        None => panic!("No Core found with id {}", idx),
+    if let Err(e) = queue.send(task) {
+        log::warn!("Fail to add request to queue with err={}", e)
     }
 }
