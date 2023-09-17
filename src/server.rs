@@ -7,13 +7,13 @@ extern crate tokio;
 use crate::request::Request;
 use crate::{engine, helpers};
 use crossbeam_channel::{Receiver, Sender};
-use hwloc2::{CpuBindFlags, CpuSet, ObjectType, Topology};
-use std::borrow::BorrowMut;
+
+
 use std::io::Error;
-use std::ops::Deref;
+
 use std::option::Option;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 use std::time::Duration;
 use std::{thread, thread::JoinHandle};
 
@@ -135,7 +135,7 @@ fn handle_connection(req: tiny_http::Request, queue: &Sender<Request>) {
         req.headers()
     );
 
-    let mut task = Request::new(req);
+    let task = Request::new(req);
 
     if let Err(e) = queue.send(task) {
         log::warn!("Fail to add request to queue with err={}", e)

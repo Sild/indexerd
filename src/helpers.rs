@@ -17,7 +17,7 @@ pub fn bind_thread(core_num: usize) -> Result<(), Box<dyn Error>> {
     let mut topo = match Topology::new() {
         Some(t) => t,
         None => {
-            return Err(format!("fail to get topology").into());
+            return Err("fail to get topology".to_string().into());
         }
     };
     let before = topo.get_cpubind_for_thread(t_id, CpuBindFlags::CPUBIND_THREAD);

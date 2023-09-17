@@ -63,7 +63,7 @@ fn worker_loop(mut worker_data: WorkerData, shutdown: Arc<AtomicBool>) {
 
 fn process(worker_data: &WorkerData, req: Request) {
     log::debug!("worker {} got request", worker_data.num);
-    let res = mock_task(&worker_data);
+    let res = mock_task(worker_data);
     req.respond(&format!(
         "The number is {}, result={}",
         worker_data.num, res
