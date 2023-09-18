@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use crate::objects::{Campaign, IdType, Package, Pad};
-use crate::store::aci::ActiveCampaignIndex;
+use crate::data::aci::ActiveCampaignIndex;
+use crate::data::objects::{Campaign, IdType, Package, Pad};
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct RawDataStorage {
     campaigns: HashMap<IdType, Campaign>,
     package: HashMap<IdType, Package>,
@@ -14,7 +14,7 @@ pub trait Storable<T> {
     fn add(&mut self, obj: &T);
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Store {
     raw_data: RawDataStorage,
     _aci: ActiveCampaignIndex,
@@ -48,5 +48,3 @@ impl RawDataStorage {
         return self.campaigns.get(id);
     }
 }
-
-impl Store {}

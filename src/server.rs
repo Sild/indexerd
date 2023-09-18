@@ -4,16 +4,15 @@ extern crate hwloc2;
 extern crate libc;
 extern crate tiny_http;
 extern crate tokio;
-use crate::request::Request;
+use crate::task::Task;
 use crate::{engine, helpers};
 use crossbeam_channel::{Receiver, Sender};
-
 
 use std::io::Error;
 
 use std::option::Option;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc};
+use std::sync::Arc;
 use std::time::Duration;
 use std::{thread, thread::JoinHandle};
 
@@ -26,7 +25,7 @@ pub struct Server {
 
 impl Server {
     pub fn new(_admin_port: u16, _user_port: u16) -> Result<Server, Error> {
-        let (task_snd_queue, task_rcv_queue): (Sender<Request>, Receiver<Request>) =
+        let (task_snd_queue, task_rcv_queue): (Sender<Task>, Receiver<Task>) =
             crossbeam_channel::bounded(1000);
 
         let mut server = Self {
@@ -77,7 +76,7 @@ impl Server {
         &self,
         bind_addr: &str,
         tag: &str,
-        task_snd_queue: &Sender<Request>,
+        task_snd_queue: &Sender<Task>,
     ) -> std::io::Result<JoinHandle<()>> {
         log::info!("{} service (bind: {}) starting...", tag, bind_addr);
 
@@ -106,11 +105,7 @@ impl Server {
     }
 }
 
-fn service_loop(
-    service: tiny_http::Server,
-    engine_queue: Sender<Request>,
-    shutdown: Arc<AtomicBool>,
-) {
+fn service_loop(service: tiny_http::Server, engine_queue: Sender<Task>, shutdown: Arc<AtomicBool>) {
     let mut shutdown_checker = helpers::ShutdownChecker::new(shutdown.clone());
     loop {
         match service.recv_timeout(Duration::from_millis(50)) {
@@ -127,7 +122,7 @@ fn service_loop(
     }
 }
 
-fn handle_connection(req: tiny_http::Request, queue: &Sender<Request>) {
+fn handle_connection(req: tiny_http::Request, queue: &Sender<Task>) {
     log::debug!(
         "received request! method: {:?}, url: {:?}, headers: {:?}",
         req.method(),
@@ -135,7 +130,7 @@ fn handle_connection(req: tiny_http::Request, queue: &Sender<Request>) {
         req.headers()
     );
 
-    let task = Request::new(req);
+    let task = Task::new(req);
 
     if let Err(e) = queue.send(task) {
         log::warn!("Fail to add request to queue with err={}", e)

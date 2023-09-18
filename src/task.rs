@@ -1,12 +1,12 @@
 extern crate tiny_http;
 
-pub struct Request {
+pub struct Task {
     raw_req: tiny_http::Request,
 }
 
-impl Request {
+impl Task {
     pub fn new(req: tiny_http::Request) -> Self {
-        Request { raw_req: req }
+        Task { raw_req: req }
     }
 
     pub fn respond(self, body: &str) {

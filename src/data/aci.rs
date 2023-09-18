@@ -1,4 +1,4 @@
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ActiveCampaignIndex {
     pub id: i32,
     pub name: String,

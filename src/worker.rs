@@ -1,7 +1,7 @@
 extern crate rand;
+use crate::data::store;
 use crate::helpers;
-use crate::request::Request;
-use crate::store::store;
+use crate::task::Task;
 use crossbeam_channel::Receiver;
 use rand::Rng;
 use std::sync::atomic::AtomicBool;
@@ -17,7 +17,7 @@ pub type ControlTask = Box<dyn FnOnce(&mut WorkerData) + Send + 'static>;
 
 pub struct WorkerData {
     pub num: i32,
-    pub task_queue: Receiver<Request>,
+    pub task_queue: Receiver<Task>,
     pub ctl_task_queue: Receiver<ControlTask>,
     pub store: Arc<RwLock<store::Store>>,
 }
@@ -61,7 +61,7 @@ fn worker_loop(mut worker_data: WorkerData, shutdown: Arc<AtomicBool>) {
     log::info!("worker {} stopped", worker_data.num)
 }
 
-fn process(worker_data: &WorkerData, req: Request) {
+fn process(worker_data: &WorkerData, req: Task) {
     log::debug!("worker {} got request", worker_data.num);
     let res = mock_task(worker_data);
     req.respond(&format!(
