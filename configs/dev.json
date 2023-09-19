@@ -1,7 +1,21 @@
 {
-  "host": "127.0.0.1",
-  "port": 32769,
-  "username": "root",
-  "password": "password",
-  "db_name": "test_db"
+  "service": {
+    "admin_port": 8089,
+    "user_port": 8088
+  },
+  "updater": {
+    "host": "127.0.0.1",
+    "port": 32306,
+    "username": "dev-user",
+    "password": "dev-password",
+    "db_name": "indexerd_dev_db",
+    "max_swap_interval": 60
+  },
+  "engine": {
+    "worker": {
+      "need_multi": true
+    },
+    "non_worker_cores": [0, 1]
+  }
+
 }

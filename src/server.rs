@@ -5,108 +5,103 @@ extern crate libc;
 extern crate tiny_http;
 extern crate tokio;
 use crate::task::Task;
-use crate::{engine, helpers};
-use crossbeam_channel::{Receiver, Sender};
+use crate::{config, engine, helpers};
+use crossbeam_channel::Sender;
 
 use std::io::Error;
 
-use std::option::Option;
-use std::sync::atomic::{AtomicBool, Ordering};
+use crate::data::updater;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{thread, thread::JoinHandle};
 
 pub struct Server {
-    admin_service: Option<JoinHandle<()>>,
-    user_service: Option<JoinHandle<()>>,
-    shutdown: Arc<AtomicBool>,
-    engine: engine::Engine,
+    conf: config::Server,
+    admin_srv: JoinHandle<()>,
+    user_srv: JoinHandle<()>,
+    updater: updater::Updater,
 }
 
 impl Server {
-    pub fn new(_admin_port: u16, _user_port: u16) -> Result<Server, Error> {
-        let (task_snd_queue, task_rcv_queue): (Sender<Task>, Receiver<Task>) =
-            crossbeam_channel::bounded(1000);
+    pub fn new(conf: &config::Server, shutdown: Arc<AtomicBool>) -> Result<Server, Error> {
+        let (send_queue, rcv_queue) = crossbeam_channel::bounded(1000);
+        let admin_srv = run_http_listener(
+            shutdown.clone(),
+            conf.service.admin_port,
+            "admin_srv",
+            &send_queue,
+        )?;
+        let user_srv = run_http_listener(
+            shutdown.clone(),
+            conf.service.user_port,
+            "user_srv",
+            &send_queue,
+        )?;
+        let engine = engine::Engine::new(&conf.engine, rcv_queue);
+        let updater =
+            updater::Updater::new(&conf.updater, engine, &shutdown).expect("fail to init updater");
 
-        let mut server = Self {
-            admin_service: None,
-            user_service: None,
-            shutdown: Arc::new(AtomicBool::new(false)),
-            engine: engine::Engine::new(task_rcv_queue),
+        let server = Self {
+            conf: conf.clone(),
+            admin_srv,
+            user_srv,
+            updater,
         };
 
-        let admin_service = server.run_service("0.0.0.0:8089", "admin_srv", &task_snd_queue)?;
-        server.admin_service = Some(admin_service);
-
-        server.init_engine()?;
-
-        let user_uservice = server.run_service("0.0.0.0:8088", "user_srv", &task_snd_queue)?;
-        server.user_service = Some(user_uservice);
         Ok(server)
     }
 
-    pub fn shutdown(&mut self) -> std::io::Result<()> {
-        log::info!("shutdown server...");
+    pub fn wait_shutdown(mut self) -> std::io::Result<()> {
+        log::info!("waiting for shutdown...");
 
-        self.shutdown.store(true, Ordering::Relaxed);
-        log::info!("waiting for user service to stop...");
-        if let Some(handle) = self.user_service.take() {
-            handle.join().expect("fail to join user service thread");
-        }
+        self.user_srv.join().expect("fail join user_srv thread");
+        log::info!("user service stopped");
 
-        self.engine.shutdown();
+        self.updater.shutdown();
 
         log::info!("waiting for admin service to stop ...");
-        if let Some(handle) = self.admin_service.take() {
-            handle.join().expect("fail to join admin service thread");
-        }
-        log::info!("server stopped");
-
+        self.admin_srv.join().expect("fail join admin_srv thread");
+        log::info!("admin service stopped");
+        log::info!("app stopped");
         Ok(())
     }
+}
 
-    fn init_engine(&self) -> std::io::Result<()> {
-        log::info!("engine is starting...");
+fn run_http_listener(
+    shutdown: Arc<AtomicBool>,
+    port: u16,
+    th_name: &str,
+    send_queue: &Sender<Task>,
+) -> std::io::Result<JoinHandle<()>> {
+    let bind_addr = format!("0.0.0.0:{}", port);
+    log::info!("starting {} thread (bind: {})...", th_name, bind_addr);
 
-        log::info!("engine is ready");
-        Ok(())
-    }
-
-    fn run_service(
-        &self,
-        bind_addr: &str,
-        tag: &str,
-        task_snd_queue: &Sender<Task>,
-    ) -> std::io::Result<JoinHandle<()>> {
-        log::info!("{} service (bind: {}) starting...", tag, bind_addr);
-
-        let engine_queue = task_snd_queue.clone();
-        let shutdown = self.shutdown.clone();
-        let bind_addr_local = String::from(bind_addr);
-        let tag_local = String::from(tag);
-        let th = thread::Builder::new().name(tag.to_string()).spawn(move || {
+    let send_queue = send_queue.clone();
+    let th = thread::Builder::new()
+        .name(th_name.to_string())
+        .spawn(move || {
             if let Err(err) = helpers::bind_thread(0) {
                 log::error!(
                     "Fail to bind {} to core {} with err={:?}",
-                    tag_local,
+                    thread::current().name().unwrap_or("noname"),
                     0,
                     err
                 );
             }
-            let service = match tiny_http::Server::http(bind_addr_local.as_str()) {
+            let service = match tiny_http::Server::http(bind_addr.as_str()) {
                 Ok(s) => s,
-                _ => panic!("Fail to start service for bind={}", bind_addr_local),
+                _ => panic!("Fail to start service for bind={}", bind_addr),
             };
-            service_loop(service, engine_queue, shutdown);
+            service_loop(service, send_queue, shutdown);
         });
 
-        log::info!("{} service (bind: {}) started.", tag, bind_addr);
-        Ok(th.unwrap())
-    }
+    log::info!("thread {} started", th_name);
+    Ok(th.unwrap())
 }
 
 fn service_loop(service: tiny_http::Server, engine_queue: Sender<Task>, shutdown: Arc<AtomicBool>) {
-    let mut shutdown_checker = helpers::ShutdownChecker::new(shutdown.clone());
+    let mut shutdown_checker = helpers::ShutdownChecker::new(shutdown);
     loop {
         match service.recv_timeout(Duration::from_millis(50)) {
             Ok(Some(req)) => handle_connection(req, &engine_queue),
@@ -116,7 +111,7 @@ fn service_loop(service: tiny_http::Server, engine_queue: Sender<Task>, shutdown
                 }
             }
         }
-        if shutdown_checker.check_force() {
+        if shutdown_checker.check() {
             return;
         }
     }

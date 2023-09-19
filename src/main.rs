@@ -3,6 +3,7 @@ extern crate indexerd_derive;
 extern crate ctrlc;
 extern crate hwloc2;
 extern crate log;
+extern crate mysql;
 
 mod config;
 mod data;
@@ -11,17 +12,15 @@ mod engine;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use mysql_cdc::errors::Error;
 mod helpers;
 mod server;
 mod task;
 mod worker;
 use log::LevelFilter;
 
-// use crate::objects::MysqlObject;
 use crate::server::Server;
 
-fn main() -> Result<(), Error> {
+fn main() -> std::io::Result<()> {
     // init logger first
     let mut builder = env_logger::Builder::from_default_env();
     if std::env::var("RUST_LOG").is_err() {
@@ -47,15 +46,15 @@ fn main() -> Result<(), Error> {
     // data_manager.insert(p1);
     // data_manager.insert(pad1);
 
-    let mut server = Server::new(8089, 8088)?;
+    let server_conf = config::Server::from_file(conf_path.as_str())?;
     let shutdown = Arc::new(AtomicBool::new(false));
-    let shutdown_local = shutdown.clone();
+    let shutdown_ctrlc = shutdown.clone();
+    let server = Server::new(&server_conf, shutdown)?;
     ctrlc::set_handler(move || {
         log::info!("received SIGINT");
-        shutdown_local.store(true, Ordering::Relaxed);
-        server.shutdown().expect("fail to shutdown server properly");
+        shutdown_ctrlc.store(true, Ordering::Relaxed);
     })
     .expect("Error setting Ctrl-C handler");
 
-    db::run_slave(shutdown, conf_path)
+    server.wait_shutdown()
 }

@@ -23,11 +23,6 @@ fn mysql_object_impl(ast: &syn::DeriveInput) -> quote::Tokens {
     let class_name = &ast.ident;
     let table_name = to_snake_case(&class_name.to_string());
 
-    fn field_names() -> &'static [&'static str] {
-        static NAMES: &'static [&'static str] = &[$(stringify!($fname)),*];
-        NAMES
-    }
-
     quote! {
         impl MysqlObject for #class_name {
             fn table<'life>() -> &'life str {
@@ -41,12 +36,6 @@ fn mysql_object_impl(ast: &syn::DeriveInput) -> quote::Tokens {
                 println!("create_from_slave for {}", stringify!(#class_name));
                 #class_name::default()
             }
-            fn select_all_req() -> String {
-                String::from("select ")
-                println!("create_from_slave for {}", stringify!(#class_name));
-                #class_name::default()
-            }
-
         }
     }
 }

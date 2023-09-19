@@ -21,6 +21,10 @@ pub struct Store {
     pub name: String,
 }
 
+impl Store {
+    pub fn build_aci(&mut self) {}
+}
+
 impl Storable<Campaign> for Store {
     fn add(&mut self, obj: &Campaign) {
         log::trace!("got new object: {:?}", obj);
