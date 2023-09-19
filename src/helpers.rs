@@ -29,8 +29,12 @@ pub fn bind_thread(core_num: usize) -> Result<(), Box<dyn Error>> {
         }
     };
 
-    topo.set_cpubind_for_thread(t_id, cpuset_to_bind, CpuBindFlags::CPUBIND_THREAD)
-        .unwrap();
+    // cpu-binding doesn't work for macos
+    if cfg!(linux) {
+        topo.set_cpubind_for_thread(t_id, cpuset_to_bind, CpuBindFlags::CPUBIND_THREAD)
+            .unwrap();
+    }
+
     let after = topo.get_cpubind_for_thread(t_id, CpuBindFlags::CPUBIND_THREAD);
 
     log::info!(

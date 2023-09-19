@@ -1,6 +1,6 @@
+extern crate inflections;
 extern crate proc_macro;
 extern crate syn;
-extern crate inflections;
 
 #[macro_use]
 extern crate quote;

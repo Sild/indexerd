@@ -1,7 +1,7 @@
 extern crate rand;
-use crate::helpers;
-use crate::request::Request;
-use crate::store::store;
+use crate::data::store;
+use crate::task::Task;
+use crate::{config, helpers};
 use crossbeam_channel::Receiver;
 use rand::Rng;
 use std::sync::atomic::AtomicBool;
@@ -11,15 +11,13 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 pub type ControlTask = Box<dyn FnOnce(&mut WorkerData) + Send + 'static>;
-// pub trait ControlTask {
-//     pub fn (&mut WorkerData);
-// }
 
 pub struct WorkerData {
     pub num: i32,
-    pub task_queue: Receiver<Request>,
+    pub task_queue: Receiver<Task>,
     pub ctl_task_queue: Receiver<ControlTask>,
     pub store: Arc<RwLock<store::Store>>,
+    pub config: config::Worker,
 }
 
 pub fn run(worker_data: WorkerData, shutdown: Arc<AtomicBool>) -> JoinHandle<()> {
@@ -61,7 +59,7 @@ fn worker_loop(mut worker_data: WorkerData, shutdown: Arc<AtomicBool>) {
     log::info!("worker {} stopped", worker_data.num)
 }
 
-fn process(worker_data: &WorkerData, req: Request) {
+fn process(worker_data: &WorkerData, req: Task) {
     log::debug!("worker {} got request", worker_data.num);
     let res = mock_task(worker_data);
     req.respond(&format!(
@@ -70,7 +68,7 @@ fn process(worker_data: &WorkerData, req: Request) {
     ))
 }
 
-fn mock_task(_worker_data: &WorkerData) -> String {
+fn mock_task(worker_data: &WorkerData) -> String {
     let mut rng = rand::thread_rng();
     let matrix_size = 5;
 
@@ -94,7 +92,11 @@ fn mock_task(_worker_data: &WorkerData) -> String {
     let mut answer = String::new();
     for row in res.iter() {
         for elem in row.iter() {
-            answer += &format!("{},", elem);
+            let val = match worker_data.config.need_multi {
+                true => elem * 2.0,
+                false => *elem,
+            };
+            answer += &format!("{},", val);
         }
     }
     answer
