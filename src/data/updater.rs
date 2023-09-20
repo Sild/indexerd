@@ -1,20 +1,15 @@
-extern crate mysql;
 use crate::config;
 use crate::data::slave;
 use crate::data::store::{Storable, Store};
 use crate::engine;
 use crate::helpers;
-use crate::task::Task;
-use crossbeam_channel::Receiver;
-use log::error;
-use mysql::*;
 use std::error::Error;
 use std::fmt::Debug;
 use std::mem::swap;
-use std::ops::{Deref, DerefMut};
+use std::ops::DerefMut;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::sync::RwLock;
-use std::sync::{Arc, Mutex, RwLockWriteGuard};
 use std::thread;
 use std::thread::JoinHandle;
 
@@ -106,7 +101,7 @@ fn cron_loop(updater: Arc<RwLock<Updater>>) {
     // };
 
     while !stop_checker.is_time() {
-        let updater = match updater.try_read() {
+        let _updater = match updater.try_read() {
             Ok(locked) => locked,
             Err(_) => continue,
         };

@@ -65,13 +65,6 @@ impl Server {
         Ok(server)
     }
 
-    pub fn notify_stop(&self) {
-        let (lock, cvar) = &*self.wait_pair;
-        let mut working = lock.lock().unwrap();
-        *working = false;
-        cvar.notify_one();
-    }
-
     pub fn wait_stop(self) -> std::io::Result<()> {
         let (lock, cvar) = &*self.wait_pair;
         let mut working = lock.lock().unwrap();
@@ -82,7 +75,6 @@ impl Server {
         log::info!("stop signal received, shutting down...");
         let mut updater_locked = self.updater.write().unwrap();
         updater_locked.stop();
-        log::info!("updater stopped");
 
         log::info!("stopping services...");
         self.stop_flag.store(true, Ordering::Release);

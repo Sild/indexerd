@@ -9,7 +9,6 @@ mod config;
 mod data;
 mod engine;
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 mod helpers;
@@ -59,7 +58,7 @@ fn main() -> std::io::Result<()> {
     let wait_pair = Arc::new((Mutex::new(true), Condvar::new()));
 
     let server_conf = config::Server::from_file(conf_path.as_str())?;
-    let mut server = Server::new(&server_conf, wait_pair.clone())?;
+    let server = Server::new(&server_conf, wait_pair.clone())?;
     ctrlc::set_handler(move || {
         log::info!("received SIGINT");
         let (lock, cvar) = &*wait_pair;

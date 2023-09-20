@@ -37,7 +37,12 @@ pub fn bind_thread(core_num: usize) {
         if let Err(e) =
             topo.set_cpubind_for_thread(t_id, cpuset_to_bind, CpuBindFlags::CPUBIND_THREAD)
         {
-            log::error!("fail to bind thread={} to core={}", t_name, core_num);
+            log::error!(
+                "fail to bind thread={} to core={}, err={:?}",
+                t_name,
+                core_num,
+                e
+            );
             return;
         }
     }

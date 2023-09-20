@@ -1,4 +1,3 @@
-use crate::config::DB;
 use crate::data::updater::Updater;
 use crate::helpers::StopChecker;
 use mysql_cdc::binlog_client::BinlogClient;
