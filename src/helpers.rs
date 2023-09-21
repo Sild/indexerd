@@ -1,4 +1,5 @@
 use hwloc2::{CpuBindFlags, CpuSet, ObjectType, Topology};
+use log;
 use std::error::Error;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -11,7 +12,7 @@ pub mod time {
 }
 
 pub fn bind_thread(core_num: usize) {
-    // return Ok(());
+    return;
     let t_id = unsafe { libc::pthread_self() };
     let th = thread::current();
     let t_name = th.name().unwrap_or("empty");
@@ -89,7 +90,7 @@ impl StopChecker {
 
     fn is_time_impl(&mut self, force: bool) -> bool {
         let cur_ts = time::cur_ts();
-        if cur_ts <= self.last_check_ts || force {
+        if cur_ts > self.last_check_ts || force {
             return self.stop_flag.load(Ordering::Relaxed);
         }
         self.last_check_ts = cur_ts;

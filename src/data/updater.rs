@@ -1,8 +1,10 @@
 use crate::config;
-use crate::data::slave;
 use crate::data::store::{Storable, Store};
+use crate::data::{select, slave};
 use crate::engine;
 use crate::helpers;
+use logging_timer::stime;
+use mysql_cdc::providers::mysql::gtid::gtid_set::GtidSet;
 use std::error::Error;
 use std::fmt::Debug;
 use std::mem::swap;
@@ -10,8 +12,8 @@ use std::ops::DerefMut;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::sync::RwLock;
-use std::thread;
-use std::thread::JoinHandle;
+use std::thread::{sleep, JoinHandle};
+use std::{thread, time};
 
 pub struct Updater {
     pub conf: config::Updater,
@@ -21,6 +23,7 @@ pub struct Updater {
     write_store: Arc<RwLock<Store>>,
     slave: Option<JoinHandle<()>>,
     cron: Option<JoinHandle<()>>,
+    last_slave_pos: u64,
 }
 
 impl Updater {
@@ -30,7 +33,7 @@ impl Updater {
     ) -> Result<Arc<RwLock<Updater>>, Box<dyn Error>> {
         let stop_flag = Arc::new(AtomicBool::new(false));
 
-        let updater = Arc::new(RwLock::new(Updater {
+        let mut updater = Updater {
             conf: conf.clone(),
             stop_flag: stop_flag.clone(),
             engine,
@@ -38,9 +41,17 @@ impl Updater {
             write_store: Arc::new(RwLock::new(Store::default())),
             slave: None,
             cron: None,
-        }));
+            last_slave_pos: 0,
+        };
 
-        let slave = run_slave(updater.clone());
+        let last_gtid = slave::get_master_gtid(&conf.db)?;
+        log::info!("Got last gtid: {:?}", last_gtid);
+
+        select::init(&mut updater)?;
+
+        let updater = Arc::new(RwLock::new(updater));
+
+        let slave = run_slave(updater.clone(), last_gtid);
         let cron = run_cron(updater.clone());
         if let Ok(mut updater) = updater.write() {
             updater.slave = Some(slave);
@@ -51,15 +62,15 @@ impl Updater {
         Ok(updater)
     }
 
+    #[stime("info")]
     pub fn stop(&mut self) {
-        log::info!("Updater: stopping...");
         self.stop_flag.store(true, Ordering::Relaxed);
         let _ = self.slave.take().unwrap().join();
         let _ = self.cron.take().unwrap().join();
-        log::info!("Updater: stopped");
     }
 
-    fn swap_stores(&mut self) {
+    #[stime("info")]
+    fn update_stores(&mut self) {
         {
             let mut store_lock = self.write_store.write().unwrap();
             store_lock.deref_mut().build_aci();
@@ -71,12 +82,12 @@ impl Updater {
     }
 }
 
-fn run_slave(updater: Arc<RwLock<Updater>>) -> JoinHandle<()> {
+fn run_slave(updater: Arc<RwLock<Updater>>, gtid: Option<GtidSet>) -> JoinHandle<()> {
     thread::Builder::new()
         .name(String::from("slave"))
         .spawn(move || {
             helpers::bind_thread(1);
-            slave::slave_loop(updater);
+            slave::slave_loop(updater, gtid);
         })
         .expect("fail to run slave thread")
 }
@@ -91,20 +102,28 @@ fn run_cron(updater: Arc<RwLock<Updater>>) -> JoinHandle<()> {
         .expect("fail to run cron thread")
 }
 
+#[stime("info")]
 fn cron_loop(updater: Arc<RwLock<Updater>>) {
     let stop_flag = updater.read().unwrap().stop_flag.clone();
     let mut stop_checker = helpers::StopChecker::new(stop_flag);
-
+    let mut last_swap_ts = 0;
     // let cur_conf = match updater.lock() {
     //     Some(locked) => Some(locked.unwrap()),
     //     Err(_) => None,
     // };
 
     while !stop_checker.is_time() {
-        let _updater = match updater.try_read() {
-            Ok(locked) => locked,
-            Err(_) => continue,
-        };
+        let loop_start_ts = helpers::time::cur_ts();
+        // let mut updater = match updater.try_read() {
+        //     Ok(locked) => locked,
+        //     Err(_) => continue,
+        // };
+        if (last_swap_ts) < loop_start_ts {
+            // updater.as.update_stores();
+            last_swap_ts = loop_start_ts;
+        } else {
+            // log::debug!("skip update_stores becase of interval");
+        }
         // match new_conf {
         //     Some(c) => updater
         //         .read()
@@ -113,8 +132,8 @@ fn cron_loop(updater: Arc<RwLock<Updater>>) {
         //         .update_config(c.db.clone()),
         //     _ => {}
         // }
+        sleep(time::Duration::from_secs(1));
     }
-    log::info!("cron thread finished");
 }
 
 #[allow(dead_code)]
