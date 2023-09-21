@@ -18,6 +18,7 @@ use std::time::Duration;
 use std::{thread, thread::JoinHandle};
 
 pub struct Server {
+    #[allow(dead_code)]
     conf: config::Server,
     admin_srv: JoinHandle<()>,
     user_srv: JoinHandle<()>,

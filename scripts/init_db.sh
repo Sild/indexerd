@@ -17,13 +17,6 @@ fi
 # init db -- exec command
 mysql_exec="mysql --host=${db_host} -P ${db_port} -u${username} --verbose"
 
-# enable gtid
-#${mysql_exec} "-e SET @@GLOBAL.ENFORCE_GTID_CONSISTENCY = WARN;"
-#${mysql_exec} "-e SET @@GLOBAL.ENFORCE_GTID_CONSISTENCY = ON;"
-#${mysql_exec} "-e SET @@GLOBAL.GTID_MODE = OFF_PERMISSIVE;"
-#${mysql_exec} "-e SET @@GLOBAL.GTID_MODE = ON_PERMISSIVE;"
-#${mysql_exec} "-e SET @@GLOBAL.GTID_MODE = ON;"
-
 # create db
 ${mysql_exec} "-e CREATE DATABASE IF NOT EXISTS ${db_name};"
 mysql_exec="${mysql_exec} ${db_name} -e"
@@ -31,13 +24,12 @@ mysql_exec="${mysql_exec} ${db_name} -e"
 # create tables
 
 # campaign
-${mysql_exec} "DROP TABLE IF EXISTS campaign;"
-${mysql_exec} "CREATE TABLE campaign (id int, name varchar(255), package_id int);"
-${mysql_exec} "INSERT INTO campaign (id, name, package_id) VALUES (1, 'test1', 2);"
+${mysql_exec} "DROP TABLE IF EXISTS campaign; CREATE TABLE campaign (id int, name varchar(255), package_id int);"
+${mysql_exec} "INSERT INTO campaign (id, name, package_id) VALUES (1, 'cmp_1', 2), (2, 'cmp_2', 3);"
 
 # package
-${mysql_exec} "DROP TABLE IF EXISTS package;"
-${mysql_exec} "CREATE TABLE package (id int, name varchar(255));"
+${mysql_exec} "DROP TABLE IF EXISTS package; CREATE TABLE package (id int, name varchar(255));"
+${mysql_exec} "INSERT INTO package (id, name) VALUES (1, 'pkg_1'), (2, 'pkg_2');"
 
 # pad
 ${mysql_exec} "DROP TABLE IF EXISTS pad;"

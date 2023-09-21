@@ -1,8 +1,6 @@
 use crate::config;
 use crate::data::updater::Updater;
 use crate::helpers::StopChecker;
-use mysql::prelude::*;
-use mysql::*;
 use mysql_cdc::binlog_client::BinlogClient;
 use mysql_cdc::binlog_events::BinlogEvents;
 use mysql_cdc::binlog_options::BinlogOptions;
@@ -10,30 +8,8 @@ use mysql_cdc::events::binlog_event::BinlogEvent;
 use mysql_cdc::providers::mysql::gtid::gtid_set::GtidSet;
 use mysql_cdc::replica_options::ReplicaOptions;
 use mysql_cdc::ssl_mode::SslMode;
-use std::error::Error;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
-
-pub fn get_master_gtid(db_conf: &config::DB) -> Result<Option<GtidSet>, Box<dyn Error>> {
-    let url = format!(
-        "mysql://{}:{}@{}:{}/",
-        db_conf.username, db_conf.password, db_conf.host, db_conf.port
-    );
-    let pool = Pool::new(url.as_str())?;
-    let mut conn = pool.get_conn()?;
-
-    let gtid: Option<String> = conn.query_first("SELECT @@global.gtid_executed")?;
-    if let Some(gtid) = gtid {
-        return match GtidSet::parse(gtid.as_str()) {
-            Ok(gtid_parsed) => Ok(Some(gtid_parsed)),
-            Err(e) => {
-                log::error!("fail to parse gtid: {:?}", e);
-                Ok(None)
-            }
-        };
-    }
-    Ok(None)
-}
 
 fn build_slave_cli_opts(db_conf: &config::DB, gtid: Option<GtidSet>) -> ReplicaOptions {
     ReplicaOptions {
@@ -82,15 +58,15 @@ fn process_events(client: &mut BinlogClient, events: BinlogEvents, sd_checker: &
             break;
         }
         let (header, ev_type) = match event {
-            Ok(e) => e,
-            Err(e) => {
-                log::warn!("fail extract event, err={:?}", e);
+            Ok(ev) => ev,
+            Err(err) => {
+                log::warn!("fail extract event, err={:?}", err);
                 continue;
             }
         };
         match ev_type {
-            BinlogEvent::WriteRowsEvent(_) => {
-                log::debug!("write event")
+            BinlogEvent::WriteRowsEvent(ref ev_body) => {
+                log::debug!("write event: header={:?}, ev_body={:?}", header, ev_body);
             }
             _ => {
                 log::trace!("ignore event: {:?}", ev_type)
@@ -98,4 +74,12 @@ fn process_events(client: &mut BinlogClient, events: BinlogEvents, sd_checker: &
         }
         client.commit(&header, &ev_type);
     }
+}
+
+#[allow(dead_code)]
+fn process_event_row(
+    _client: &mut BinlogClient,
+    _event: BinlogEvents,
+    _sd_checker: &mut StopChecker,
+) {
 }
