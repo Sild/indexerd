@@ -1,17 +1,14 @@
 use std::collections::HashMap;
 
 use crate::data::aci::ActiveCampaignIndex;
+use crate::data::objects::Storable;
 use crate::data::objects::{Campaign, IdType, Package, Pad};
 
 #[derive(Default, Clone)]
 struct RawDataStorage {
     campaigns: HashMap<IdType, Campaign>,
-    package: HashMap<IdType, Package>,
+    packages: HashMap<IdType, Package>,
     pads: HashMap<IdType, Pad>,
-}
-
-pub trait Storable<T> {
-    fn add(&mut self, obj: &T);
 }
 
 #[derive(Default, Clone)]
@@ -22,27 +19,52 @@ pub struct Store {
 }
 
 impl Store {
+    #[allow(dead_code)]
     pub fn build_aci(&mut self) {}
 }
 
-impl Storable<Campaign> for Store {
-    fn add(&mut self, obj: &Campaign) {
-        log::trace!("got new object: {:?}", obj);
-        self.raw_data.campaigns.insert(obj.id, obj.clone());
+impl Storable for Campaign {
+    fn insert(self, store: &mut Store) {
+        log::debug!("insert campaign: {:?}", self);
+        store.raw_data.campaigns.insert(self.id, self);
+    }
+    fn update(self, store: &mut Store, _old: Option<Self>) {
+        log::debug!("update campaign: {:?}", self);
+        store.raw_data.campaigns.insert(self.id, self);
+    }
+    fn delete(self, store: &mut Store) {
+        log::debug!("delete campaign: {:?}", self);
+        store.raw_data.campaigns.insert(self.id, self);
     }
 }
 
-impl Storable<Package> for Store {
-    fn add(&mut self, obj: &Package) {
-        log::trace!("got new object: {:?}", obj);
-        self.raw_data.package.insert(obj.id, obj.clone());
+impl Storable for Package {
+    fn insert(self, store: &mut Store) {
+        log::debug!("insert package: {:?}", self);
+        store.raw_data.packages.insert(self.id, self);
+    }
+    fn update(self, store: &mut Store, _old: Option<Self>) {
+        log::debug!("update package: {:?}", self);
+        store.raw_data.packages.insert(self.id, self);
+    }
+    fn delete(self, store: &mut Store) {
+        log::debug!("delete package: {:?}", self);
+        store.raw_data.packages.insert(self.id, self);
     }
 }
 
-impl Storable<Pad> for Store {
-    fn add(&mut self, obj: &Pad) {
-        log::trace!("got new object: {:?}", obj);
-        self.raw_data.pads.insert(obj.id, obj.clone());
+impl Storable for Pad {
+    fn insert(self, store: &mut Store) {
+        log::debug!("insert pad: {:?}", self);
+        store.raw_data.pads.insert(self.id, self);
+    }
+    fn update(self, store: &mut Store, _old: Option<Self>) {
+        log::debug!("update pad: {:?}", self);
+        store.raw_data.pads.insert(self.id, self);
+    }
+    fn delete(self, store: &mut Store) {
+        log::debug!("delete pad: {:?}", self);
+        store.raw_data.pads.insert(self.id, self);
     }
 }
 

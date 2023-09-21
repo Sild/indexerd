@@ -28,10 +28,6 @@ fn mysql_object_impl(ast: &syn::DeriveInput) -> quote::Tokens {
             fn table<'life>() -> &'life str {
                 &#table_name
             }
-            fn from_select() -> Self {
-                println!("create_from_select for {}", stringify!(#class_name));
-                #class_name::default()
-            }
             fn from_slave() -> Self {
                 println!("create_from_slave for {}", stringify!(#class_name));
                 #class_name::default()

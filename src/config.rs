@@ -3,21 +3,27 @@ use serde_json::Result;
 use std::collections::HashSet;
 use std::io::Read;
 
-#[derive(Default, Debug, Deserialize, Clone)]
+#[derive(Default, Debug, Deserialize, Clone, Eq, PartialEq)]
 pub struct Server {
     pub service: Service,
-    pub updater: Updater,
     pub engine: Engine,
+    pub updater: Updater,
 }
 
-#[derive(Default, Debug, Deserialize, Clone)]
+#[derive(Default, Debug, Deserialize, Clone, Eq, PartialEq)]
 pub struct Service {
     pub admin_port: u16,
     pub user_port: u16,
 }
 
-#[derive(Default, Debug, Deserialize, Clone)]
+#[derive(Default, Debug, Deserialize, Clone, Eq, PartialEq)]
 pub struct Updater {
+    pub db: DB,
+    pub swap_interval: u16,
+}
+
+#[derive(Default, Debug, Deserialize, Clone, Eq, PartialEq)]
+pub struct DB {
     pub host: String,
     pub port: u16,
     pub username: String,
@@ -25,13 +31,13 @@ pub struct Updater {
     pub db_name: String,
 }
 
-#[derive(Default, Debug, Deserialize, Clone)]
+#[derive(Default, Debug, Deserialize, Clone, Eq, PartialEq)]
 pub struct Engine {
     pub worker: Worker,
     pub non_worker_cores: HashSet<u16>,
 }
 
-#[derive(Default, Debug, Deserialize, Copy, Clone)]
+#[derive(Default, Debug, Deserialize, Copy, Clone, Eq, PartialEq)]
 pub struct Worker {
     pub need_multi: bool,
 }

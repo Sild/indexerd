@@ -24,17 +24,14 @@ pub fn run(worker_data: WorkerData, shutdown: Arc<AtomicBool>) -> JoinHandle<()>
     thread::Builder::new()
         .name(format!("worker_{}", worker_data.num))
         .spawn(move || {
-            if let Err(e) = helpers::bind_thread((worker_data.num + 1) as usize) {
-                log::error!("bind thread failed: {:?}", e);
-                return;
-            }
+            helpers::bind_thread((worker_data.num + 1) as usize);
             worker_loop(worker_data, shutdown)
         })
         .unwrap()
 }
 
 fn worker_loop(mut worker_data: WorkerData, shutdown: Arc<AtomicBool>) {
-    let mut sd_checker = helpers::ShutdownChecker::new(shutdown);
+    let mut stop_checker = helpers::StopChecker::new(shutdown);
     loop {
         if let Ok(ctl_task) = worker_data.ctl_task_queue.try_recv() {
             ctl_task(&mut worker_data)
@@ -47,12 +44,12 @@ fn worker_loop(mut worker_data: WorkerData, shutdown: Arc<AtomicBool>) {
                 process(&mut worker_data, req);
             }
             Err(_) => {
-                if sd_checker.check_force() {
+                if stop_checker.is_time_force() {
                     break;
                 }
             }
         }
-        if sd_checker.check() {
+        if stop_checker.is_time() {
             break;
         }
     }

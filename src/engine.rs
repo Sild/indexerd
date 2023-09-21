@@ -48,6 +48,7 @@ impl Engine {
         engine
     }
 
+    #[allow(dead_code)]
     pub fn set_new_store(&mut self, store: &Arc<RwLock<Store>>) {
         self.store = store.clone();
         for queue in self.ctl_queues.iter_mut() {
@@ -74,7 +75,7 @@ impl Engine {
         }
     }
 
-    pub fn shutdown(&mut self) {
+    pub fn stop(&mut self) {
         log::info!("stopping engine...");
         self.shutdown_workers.store(true, Ordering::Relaxed);
         for th in self.workers.drain(..) {

@@ -1,4 +1,5 @@
 use hwloc2::{CpuBindFlags, CpuSet, ObjectType, Topology};
+use log;
 use std::error::Error;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -10,14 +11,18 @@ pub mod time {
     }
 }
 
-pub fn bind_thread(core_num: usize) -> Result<(), Box<dyn Error>> {
+pub fn bind_thread(core_num: usize) {
+    if cfg!(unix) {
+        return;
+    }
     let t_id = unsafe { libc::pthread_self() };
     let th = thread::current();
     let t_name = th.name().unwrap_or("empty");
     let mut topo = match Topology::new() {
         Some(t) => t,
         None => {
-            return Err("fail to get topology".to_string().into());
+            log::error!("fail to get topology");
+            return;
         }
     };
     let before = topo.get_cpubind_for_thread(t_id, CpuBindFlags::CPUBIND_THREAD);
@@ -25,27 +30,35 @@ pub fn bind_thread(core_num: usize) -> Result<(), Box<dyn Error>> {
     let cpuset_to_bind = match cpuset_for_core(&topo, core_num) {
         Ok(c) => c,
         Err(e) => {
-            return Err(e);
+            log::error!("fail to get cpuset_to_bind, err={}", e);
+            return;
         }
     };
 
     // cpu-binding doesn't work for macos
     if cfg!(linux) {
-        topo.set_cpubind_for_thread(t_id, cpuset_to_bind, CpuBindFlags::CPUBIND_THREAD)
-            .unwrap();
+        if let Err(e) =
+            topo.set_cpubind_for_thread(t_id, cpuset_to_bind, CpuBindFlags::CPUBIND_THREAD)
+        {
+            log::error!(
+                "fail to bind thread={} to core={}, err={:?}",
+                t_name,
+                core_num,
+                e
+            );
+            return;
+        }
     }
 
     let after = topo.get_cpubind_for_thread(t_id, CpuBindFlags::CPUBIND_THREAD);
 
     log::info!(
-        "Bindind for thread_id={} (name='{}'), core={}: Before={:?}, After={:?}",
-        t_id,
+        "Bindind for thread_name='{}', core={}: Before={:?}, After={:?}",
         t_name,
         core_num,
         before,
         after
     );
-    Ok(())
 }
 
 fn cpuset_for_core(topology: &Topology, idx: usize) -> Result<CpuSet, Box<dyn Error>> {
@@ -56,31 +69,31 @@ fn cpuset_for_core(topology: &Topology, idx: usize) -> Result<CpuSet, Box<dyn Er
     }
 }
 
-pub struct ShutdownChecker {
-    shutdown: Arc<AtomicBool>,
+pub struct StopChecker {
+    stop_flag: Arc<AtomicBool>,
     last_check_ts: u64,
 }
 
-impl ShutdownChecker {
+impl StopChecker {
     pub fn new(shutdown: Arc<AtomicBool>) -> Self {
-        ShutdownChecker {
-            shutdown,
+        StopChecker {
+            stop_flag: shutdown,
             last_check_ts: 0,
         }
     }
 
-    pub fn check(&mut self) -> bool {
-        self.check_impl(false)
+    pub fn is_time(&mut self) -> bool {
+        self.is_time_impl(false)
     }
 
-    pub fn check_force(&mut self) -> bool {
-        self.check_impl(true)
+    pub fn is_time_force(&mut self) -> bool {
+        self.is_time_impl(true)
     }
 
-    fn check_impl(&mut self, force: bool) -> bool {
+    fn is_time_impl(&mut self, force: bool) -> bool {
         let cur_ts = time::cur_ts();
-        if cur_ts <= self.last_check_ts || force {
-            return self.shutdown.load(Ordering::Relaxed);
+        if cur_ts > self.last_check_ts || force {
+            return self.stop_flag.load(Ordering::Relaxed);
         }
         self.last_check_ts = cur_ts;
         false
