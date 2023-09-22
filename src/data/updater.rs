@@ -56,7 +56,7 @@ impl Updater {
         let last_gtid = select::get_master_gtid(&conf.db)?;
         log::info!("Got last gtid: {:?}", last_gtid);
 
-        select::init(&updater_ptr)?;
+        select::init(&updater_ptr, &conf.db)?;
 
         let slave = run_slave(updater_ptr.clone(), last_gtid);
         let cron = run_cron(updater_ptr.clone());

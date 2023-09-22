@@ -26,10 +26,12 @@ mysql_exec="${mysql_exec} ${db_name} -e"
 # campaign
 ${mysql_exec} "DROP TABLE IF EXISTS campaign; CREATE TABLE campaign (id int, name varchar(255), package_id int);"
 ${mysql_exec} "INSERT INTO campaign (id, name, package_id) VALUES (1, 'cmp_1', 2), (2, 'cmp_2', 3);"
+${mysql_exec} "UPDATE campaign SET package_id=3 where id = 1;"
+${mysql_exec} "DELETE from campaign where id = 1;"
 
 # package
 ${mysql_exec} "DROP TABLE IF EXISTS package; CREATE TABLE package (id int, name varchar(255));"
-${mysql_exec} "INSERT INTO package (id, name) VALUES (1, 'pkg_1'), (2, 'pkg_2');"
+${mysql_exec} "INSERT INTO package (id, name) VALUES (1, 'pkg_1'), (2, 'pkg_2'), (3, 'pkg_3');"
 
 # pad
 ${mysql_exec} "DROP TABLE IF EXISTS pad;"
