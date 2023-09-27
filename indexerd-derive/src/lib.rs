@@ -25,10 +25,12 @@ fn mysql_object_impl(ast: &syn::DeriveInput) -> quote::Tokens {
 
     quote! {
         impl MysqlObject for #class_name {
-            fn table<'life>() -> &'life str {
+            fn table<'life>() -> &'life str where
+        Self: Sized {
                 &#table_name
             }
-            fn from_slave() -> Self {
+            fn from_slave(row_data: &RowData, fields_map: &HashMap<String, FieldMapping>) -> Self where
+        Self: Sized {
                 println!("create_from_slave for {}", stringify!(#class_name));
                 #class_name::default()
             }

@@ -1,8 +1,9 @@
+#[macro_use]
 use crate::config;
-use crate::data::objects::MysqlObject;
-use crate::data::slave::SupportedTypes::Campaign;
+use crate::config::DB;
+use crate::data::objects::{MysqlObject, Storable};
 use crate::data::updater::{EventType, Updater, UpdaterPtr};
-use crate::data::{objects, select};
+use crate::data::{objects, select, updater};
 use crate::helpers::StopChecker;
 use mysql_cdc::binlog_client::BinlogClient;
 use mysql_cdc::binlog_events::BinlogEvents;
@@ -15,13 +16,13 @@ use mysql_cdc::events::table_map_event::TableMapEvent;
 use mysql_cdc::providers::mysql::gtid::gtid_set::GtidSet;
 use mysql_cdc::replica_options::ReplicaOptions;
 use mysql_cdc::ssl_mode::SslMode;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
-use strum::IntoEnumIterator; // 0.17.1
-use strum_macros::EnumIter;
 
-#[derive(Debug, EnumIter, Hash, Eq, PartialEq)]
+#[derive(Debug, Hash, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
 enum SupportedTypes {
     Campaign,
     Package,
@@ -36,7 +37,7 @@ pub type FieldMapping = HashMap<String, u32>;
 struct Context {
     updater: UpdaterPtr,
     table_id_map: HashMap<u64, SupportedTypes>,
-    fields_map: HashMap<SupportedTypes, FieldMapping>,
+    fields_map: HashMap<String, FieldMapping>,
     slave_cli: BinlogClient,
 }
 
@@ -70,18 +71,9 @@ pub fn slave_loop(updater: Arc<RwLock<Updater>>, start_gtid: Option<GtidSet>) {
         slave_cli: BinlogClient::new(build_slave_cli_opts(&db_conf, start_gtid)),
     };
 
-    let mut campaign_map = FieldMapping::new();
-    let mut campaign_fields = match select::get_columns(&db_conf, objects::Campaign::table()) {
-        Ok(f) => f,
-        Err(e) => {
-            log::error!("error getting campaign fields: {}", e);
-            return;
-        }
-    };
-    for (pos, name) in campaign_fields.iter().enumerate() {
-        campaign_map.insert(name.clone(), pos as u32);
-    }
-    ctx.fields_map.insert(Campaign, FieldMapping::new());
+    fill_fields_map::<objects::Campaign>(&db_conf, &mut ctx.fields_map, false);
+    fill_fields_map::<objects::Package>(&db_conf, &mut ctx.fields_map, false);
+    fill_fields_map::<objects::Pad>(&db_conf, &mut ctx.fields_map, false);
 
     let mut stop_checker = StopChecker::new(stop_flag);
 
@@ -122,14 +114,37 @@ fn process_write(ctx: &mut Context, events: &WriteRowsEvent) {
     log::info!("table_id: {}, events: {:?}", events.table_id, events);
 
     for ev in events.rows.iter() {
+        log::info!("{:?}", ctx.table_id_map);
+        if let Some(obj_type) = ctx.table_id_map.get(&events.table_id) {
+            match obj_type {
+                SupportedTypes::Campaign => {
+                    updater::apply_to_store(
+                        &ctx.updater,
+                        objects::Campaign::from_slave(ev, &ctx.fields_map),
+                        None,
+                        EventType::INSERT,
+                    );
+                }
+                SupportedTypes::Package => {
+                    updater::apply_to_store(
+                        &ctx.updater,
+                        objects::Package::from_slave(ev, &ctx.fields_map),
+                        None,
+                        EventType::INSERT,
+                    );
+                }
+                SupportedTypes::Pad => {
+                    updater::apply_to_store(
+                        &ctx.updater,
+                        objects::Pad::from_slave(ev, &ctx.fields_map),
+                        None,
+                        EventType::INSERT,
+                    );
+                }
+                SupportedTypes::Unknown => {}
+            };
+        }
         log::info!("table_id: {}, write_ev: {:?}", events.table_id, ev);
-        // let obj = match &ctx.table_id_map[&events.table_id] {
-        //     SupportedTypes::Campaign => Campaign::from_row(ev.into()),
-        //     SupportedTypes::Package => Package::from_row(ev.into()),
-        //     SupportedTypes::Pad => Pad::from_row(ev.into()),
-        //     _ => Campaign::default(),
-        // };
-        // updater::apply_to_store(&ctx.updater, obj, None, EventType::INSERT)
     }
 }
 
@@ -149,14 +164,35 @@ fn process_table_map(ctx: &mut Context, event: &TableMapEvent) {
     if ctx.table_id_map.contains_key(&event.table_id) {
         return;
     }
-    ctx.table_id_map.insert(
-        event.table_id,
-        match event.table_name.as_str() {
-            "campaign" => SupportedTypes::Campaign,
-            "package" => SupportedTypes::Package,
-            "pad" => SupportedTypes::Pad,
-            _ => SupportedTypes::Unknown,
-        },
-    );
+    let t = serde_json::from_str::<SupportedTypes>(
+        format!("\"{}\"", event.table_name.as_str()).as_str(),
+    )
+    .unwrap_or(SupportedTypes::Unknown);
+
+    ctx.table_id_map.insert(event.table_id, t);
     log::info!("table_map_event: {:?}", event)
+}
+
+fn fill_fields_map<T: MysqlObject>(
+    db_conf: &DB,
+    fields_map: &mut HashMap<String, FieldMapping>,
+    _retry: bool,
+) {
+    // todo: add retry logic
+    let mut fields = match select::get_columns(&db_conf, T::table()) {
+        Ok(cols) => cols,
+        Err(e) => {
+            log::error!("fail to get columns for {}: {:?}", T::table(), e);
+            return;
+        }
+    };
+
+    let type_fields = HashMap::from_iter(
+        fields
+            .iter()
+            .enumerate()
+            .map(|(pos, field)| (field.clone(), pos as u32)),
+    );
+    log::debug!("table: {}, fields: {:?} ", T::table(), type_fields);
+    fields_map.insert(T::table().into(), type_fields);
 }

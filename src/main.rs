@@ -4,6 +4,7 @@ extern crate ctrlc;
 extern crate hwloc2;
 extern crate log;
 extern crate mysql;
+extern crate serde_json;
 
 mod config;
 mod data;

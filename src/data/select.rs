@@ -63,7 +63,7 @@ where
 pub fn get_columns(db_conf: &config::DB, table: &str) -> Result<Vec<String>> {
     let mut conn = get_connection(&db_conf)?;
     let columns = conn.query_map(
-        format!("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_NAME = {} ORDER BY ORDINAL_POSITION", table),
+        format!("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_NAME = '{}' ORDER BY ORDINAL_POSITION", table),
         |(name,)| name, // closure maps row to name
     )?;
     Ok(columns)

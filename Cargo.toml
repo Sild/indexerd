@@ -23,8 +23,6 @@ libc = "0.2.147"
 diesel = { version = "2.1.1", features = ["mysql"] }
 mysql = "24.0.0"
 logging_timer = "1.1.0"
-strum = "0.25"
-strum_macros = "0.25"
 
 [profile.dev]
 # inherits = "dev"

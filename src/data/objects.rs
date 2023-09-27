@@ -1,10 +1,18 @@
+use crate::data::slave::FieldMapping;
 use crate::data::store;
 use mysql::prelude::FromRow;
+use mysql_cdc::events::row_events::row_data::RowData;
+use std::collections::HashMap;
+
 pub type IdType = i32;
 
 pub trait MysqlObject {
-    fn table<'life>() -> &'life str;
-    fn from_slave() -> Self;
+    fn table<'life>() -> &'life str
+    where
+        Self: Sized;
+    fn from_slave(row_data: &RowData, fields_map: &HashMap<String, FieldMapping>) -> Self
+    where
+        Self: Sized;
 }
 
 pub trait Storable {
