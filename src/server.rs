@@ -55,8 +55,8 @@ impl Server {
 
         let server = Self {
             conf: conf.clone(),
-            admin_srv: admin_srv,
-            user_srv: user_srv,
+            admin_srv,
+            user_srv,
             engine,
             updater,
             stop_flag,

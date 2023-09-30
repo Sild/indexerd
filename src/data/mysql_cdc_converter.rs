@@ -1,6 +1,5 @@
-use log::{error, log};
 use mysql_cdc::events::row_events::mysql_value::MySqlValue;
-use std::ops::Deref;
+
 use std::panic;
 
 pub trait FromSqlValue {
@@ -9,18 +8,7 @@ pub trait FromSqlValue {
 
 pub fn convert<T: FromSqlValue + std::default::Default>(val: &Option<MySqlValue>) -> T {
     let mysql_val = val.as_ref().unwrap();
-    match panic::catch_unwind(|| T::from(&mysql_val)) {
-        Ok(value) => value,
-        Err(e) => {
-            log::error!(
-                "Fail to convert {:?} to {}: {:?}",
-                mysql_val,
-                std::any::type_name::<T>(),
-                e
-            );
-            T::default()
-        }
-    }
+    T::from(mysql_val)
 }
 
 impl FromSqlValue for i8 {
@@ -73,7 +61,7 @@ impl FromSqlValue for u8 {
 impl FromSqlValue for f32 {
     fn from(value: &MySqlValue) -> Self {
         match value {
-            MySqlValue::Float(v) => *v as f32,
+            MySqlValue::Float(v) => *v,
             _ => panic!("Cannot convert MySqlValue to f32"),
         }
     }

@@ -37,11 +37,11 @@ pub fn get_master_gtid(db_conf: &config::DB) -> Result<Option<GtidSet>, Box<dyn 
 
 #[stime("info")]
 pub fn init(updater: &UpdaterPtr, db_conf: &config::DB) -> Result<(), Box<dyn Error>> {
-    let mut conn = get_connection(&db_conf)?;
+    let mut conn = get_connection(db_conf)?;
 
-    init_objects::<Campaign>(&updater, &mut conn)?;
-    init_objects::<Package>(&updater, &mut conn)?;
-    init_objects::<Pad>(&updater, &mut conn)?;
+    init_objects::<Campaign>(updater, &mut conn)?;
+    init_objects::<Package>(updater, &mut conn)?;
+    init_objects::<Pad>(updater, &mut conn)?;
     Ok(())
 }
 
@@ -54,14 +54,14 @@ where
 
     conn.query_map(query, |row| {
         let object = T::from_row(row);
-        updater::apply_to_store(&updater, object, None, updater::EventType::INSERT);
+        updater::apply_to_store(updater, object, None, updater::EventType::INSERT);
     })?;
 
     Ok(())
 }
 
 pub fn get_columns(db_conf: &config::DB, table: &str) -> Result<Vec<String>> {
-    let mut conn = get_connection(&db_conf)?;
+    let mut conn = get_connection(db_conf)?;
     let columns = conn.query_map(
         format!("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_NAME = '{}' ORDER BY ORDINAL_POSITION", table),
         |(name,)| name, // closure maps row to name

@@ -1,12 +1,10 @@
+use crate::data::mysql_cdc_converter::convert;
 use crate::data::slave::FieldMapping;
 use crate::data::store;
 use mysql::prelude::FromRow;
 
-use crate::data::mysql_cdc_converter::convert;
 use mysql_cdc::events::row_events::row_data::RowData;
 use std::collections::HashMap;
-use std::convert::TryFrom;
-use std::slice::SliceIndex;
 
 pub type IdType = i32;
 

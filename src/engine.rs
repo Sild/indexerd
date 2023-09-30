@@ -37,7 +37,7 @@ impl Engine {
                 task_queue: task_queue_rcv.clone(),
                 ctl_task_queue: ctl_queue_rcv,
                 store: engine.store.clone(),
-                config: engine.conf.worker.clone(),
+                config: engine.conf.worker,
             };
 
             let th = worker::run(worker_data, engine.shutdown_workers.clone());
@@ -65,7 +65,7 @@ impl Engine {
     pub fn update_config(&mut self, conf: config::Engine) {
         self.conf = conf;
         for queue in self.ctl_queues.iter_mut() {
-            let conf_copy = self.conf.worker.clone();
+            let conf_copy = self.conf.worker;
             let func = move |worker_data: &mut WorkerData| {
                 worker_data.config = conf_copy;
             };

@@ -1,6 +1,5 @@
-#[macro_use]
 use crate::config;
-use crate::data::objects::{MysqlObject, Storable};
+use crate::data::objects::MysqlObject;
 use crate::data::updater::{EventType, Updater, UpdaterPtr};
 use crate::data::{objects, select, updater};
 use crate::helpers::StopChecker;
@@ -147,13 +146,13 @@ fn process_write(ctx: &mut Context, events: &WriteRowsEvent) {
     }
 }
 
-fn process_update(ctx: &mut Context, events: &UpdateRowsEvent) {
+fn process_update(_ctx: &mut Context, events: &UpdateRowsEvent) {
     for ev in events.rows.iter() {
         log::info!("table_id: {}, update_ev: {:?}", events.table_id, ev)
     }
 }
 
-fn process_delete(ctx: &mut Context, events: &DeleteRowsEvent) {
+fn process_delete(_ctx: &mut Context, events: &DeleteRowsEvent) {
     for ev in events.rows.iter() {
         log::info!("table_id: {}, delete_ev: {:?}", events.table_id, ev)
     }
@@ -177,7 +176,7 @@ fn fill_fields_map<T: MysqlObject>(
     _retry: bool,
 ) {
     // todo: add retry logic
-    let fields = match select::get_columns(&db_conf, T::table()) {
+    let fields = match select::get_columns(db_conf, T::table()) {
         Ok(cols) => cols,
         Err(e) => {
             log::error!("fail to get columns for {}: {:?}", T::table(), e);
@@ -189,7 +188,7 @@ fn fill_fields_map<T: MysqlObject>(
         fields
             .iter()
             .enumerate()
-            .map(|(pos, field)| (field.clone(), pos.into())),
+            .map(|(pos, field)| (field.clone(), pos)),
     );
     log::debug!("table: {}, fields: {:?} ", T::table(), type_fields);
     fields_map.insert(T::table().into(), type_fields);
