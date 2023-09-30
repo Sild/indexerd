@@ -1,6 +1,5 @@
 #[macro_use]
 use crate::config;
-use crate::config::DB;
 use crate::data::objects::{MysqlObject, Storable};
 use crate::data::updater::{EventType, Updater, UpdaterPtr};
 use crate::data::{objects, select, updater};
@@ -32,7 +31,7 @@ enum SupportedTypes {
     // TargetingPad,
 }
 
-pub type FieldMapping = HashMap<String, u32>;
+pub type FieldMapping = HashMap<String, usize>;
 
 struct Context {
     updater: UpdaterPtr,
@@ -92,6 +91,7 @@ pub fn slave_loop(updater: Arc<RwLock<Updater>>, start_gtid: Option<GtidSet>) {
 
 fn process_events(ctx: &mut Context, events: BinlogEvents) {
     for event in events {
+        log::trace!("got new slave event: '{:?}'", event);
         let (header, ev_type) = match event {
             Ok(ev) => ev,
             Err(err) => {
@@ -104,7 +104,7 @@ fn process_events(ctx: &mut Context, events: BinlogEvents) {
             BinlogEvent::UpdateRowsEvent(ref ev_body) => process_update(ctx, ev_body),
             BinlogEvent::DeleteRowsEvent(ref ev_body) => process_delete(ctx, ev_body),
             BinlogEvent::TableMapEvent(ref ev_body) => process_table_map(ctx, ev_body),
-            _ => log::trace!("ignore event: {:?}", ev_type),
+            _ => log::trace!("ignore slave event with type={:?}", ev_type),
         }
         ctx.slave_cli.commit(&header, &ev_type);
     }
@@ -114,7 +114,6 @@ fn process_write(ctx: &mut Context, events: &WriteRowsEvent) {
     log::info!("table_id: {}, events: {:?}", events.table_id, events);
 
     for ev in events.rows.iter() {
-        log::info!("{:?}", ctx.table_id_map);
         if let Some(obj_type) = ctx.table_id_map.get(&events.table_id) {
             match obj_type {
                 SupportedTypes::Campaign => {
@@ -170,16 +169,15 @@ fn process_table_map(ctx: &mut Context, event: &TableMapEvent) {
     .unwrap_or(SupportedTypes::Unknown);
 
     ctx.table_id_map.insert(event.table_id, t);
-    log::info!("table_map_event: {:?}", event)
 }
 
 fn fill_fields_map<T: MysqlObject>(
-    db_conf: &DB,
+    db_conf: &config::DB,
     fields_map: &mut HashMap<String, FieldMapping>,
     _retry: bool,
 ) {
     // todo: add retry logic
-    let mut fields = match select::get_columns(&db_conf, T::table()) {
+    let fields = match select::get_columns(&db_conf, T::table()) {
         Ok(cols) => cols,
         Err(e) => {
             log::error!("fail to get columns for {}: {:?}", T::table(), e);
@@ -187,11 +185,11 @@ fn fill_fields_map<T: MysqlObject>(
         }
     };
 
-    let type_fields = HashMap::from_iter(
+    let type_fields = FieldMapping::from_iter(
         fields
             .iter()
             .enumerate()
-            .map(|(pos, field)| (field.clone(), pos as u32)),
+            .map(|(pos, field)| (field.clone(), pos.into())),
     );
     log::debug!("table: {}, fields: {:?} ", T::table(), type_fields);
     fields_map.insert(T::table().into(), type_fields);

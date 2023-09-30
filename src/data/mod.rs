@@ -1,4 +1,5 @@
 pub mod aci;
+mod mysql_cdc_converter;
 pub mod objects;
 pub mod select;
 pub mod slave;

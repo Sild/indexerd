@@ -1,8 +1,12 @@
 use crate::data::slave::FieldMapping;
 use crate::data::store;
 use mysql::prelude::FromRow;
+
+use crate::data::mysql_cdc_converter::convert;
 use mysql_cdc::events::row_events::row_data::RowData;
 use std::collections::HashMap;
+use std::convert::TryFrom;
+use std::slice::SliceIndex;
 
 pub type IdType = i32;
 
@@ -23,7 +27,7 @@ pub trait Storable {
     fn delete(self, store: &mut store::Store);
 }
 
-#[derive(Debug, Default, MysqlObject, Clone, FromRow)]
+#[derive(Debug, MysqlObject, Default, Clone, FromRow)]
 pub struct Campaign {
     pub id: IdType,
     pub name: String,

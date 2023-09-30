@@ -1,13 +1,12 @@
 use crate::config;
 use crate::data::objects::Storable;
 use crate::data::objects::{Campaign, MysqlObject, Package, Pad};
-use crate::data::slave;
 use crate::data::updater;
 use crate::data::updater::UpdaterPtr;
+use logging_timer::stime;
 use mysql::prelude::*;
 use mysql::*;
 use mysql_cdc::providers::mysql::gtid::gtid_set::GtidSet;
-use std::collections::HashMap;
 use std::error::Error;
 
 pub fn get_connection(db_conf: &config::DB) -> Result<PooledConn> {
@@ -36,6 +35,7 @@ pub fn get_master_gtid(db_conf: &config::DB) -> Result<Option<GtidSet>, Box<dyn 
     Ok(None)
 }
 
+#[stime("info")]
 pub fn init(updater: &UpdaterPtr, db_conf: &config::DB) -> Result<(), Box<dyn Error>> {
     let mut conn = get_connection(&db_conf)?;
 
