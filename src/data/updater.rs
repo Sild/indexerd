@@ -8,8 +8,9 @@ use logging_timer::stime;
 use mysql_cdc::providers::mysql::gtid::gtid_set::GtidSet;
 use std::error::Error;
 use std::fmt::Debug;
+use std::mem;
 use std::mem::swap;
-use std::ops::DerefMut;
+use std::ops::{Add, DerefMut};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -24,9 +25,10 @@ pub struct Updater {
     engine: Arc<RwLock<engine::Engine>>,
     #[allow(dead_code)]
     read_store: Arc<RwLock<Store>>,
-    pub write_store: Arc<RwLock<Store>>,
+    write_store: Arc<RwLock<Store>>,
     slave: Option<JoinHandle<()>>,
     cron: Option<JoinHandle<()>>,
+    index_iteration: u64,
 }
 
 #[derive(Debug)]
@@ -53,6 +55,7 @@ impl Updater {
             write_store: Arc::new(RwLock::new(Store::default())),
             slave: None,
             cron: None,
+            index_iteration: 0,
         }));
 
         let last_gtid = select::get_master_gtid(&conf.db)?;
@@ -80,14 +83,14 @@ impl Updater {
 
     #[stime("info")]
     fn update_stores(&mut self) {
-        {
-            let mut store_lock = self.write_store.write().unwrap();
-            store_lock.deref_mut().build_aci();
-        }
-        let mut locked_engine = self.engine.write().unwrap();
-        locked_engine.set_new_store(&self.write_store);
-        swap(&mut self.read_store, &mut self.write_store);
-        let _store_lock = self.write_store.write().unwrap();
+        let mut write_store = self.write_store.write().unwrap();
+        write_store.rebuild_index(self.index_iteration.add(1));
+        // slave is still blocked for write access because workers still read from old store
+        swap(&mut self.write_store, &mut self.read_store);
+        self.engine
+            .write()
+            .unwrap()
+            .set_new_store(&self.write_store);
     }
 }
 
@@ -119,24 +122,12 @@ fn cron_loop(updater: Arc<RwLock<Updater>>) {
 
     while !stop_checker.is_time() {
         let loop_start_ts = helpers::time::cur_ts();
-        // let mut updater = match updater.try_read() {
-        //     Ok(locked) => locked,
-        //     Err(_) => continue,
-        // };
-        if (last_swap_ts) < loop_start_ts {
-            // updater.as.update_stores();
+
+        if loop_start_ts > last_swap_ts + 5 {
+            let mut locked = updater.write().unwrap();
+            locked.update_stores();
             last_swap_ts = loop_start_ts;
-        } else {
-            // log::debug!("skip update_stores becase of interval");
         }
-        // match new_conf {
-        //     Some(c) => updater
-        //         .read()
-        //         .unwrap()
-        //         .engine
-        //         .update_config(c.db.clone()),
-        //     _ => {}
-        // }
         sleep(time::Duration::from_secs(1));
     }
 }

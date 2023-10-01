@@ -48,7 +48,6 @@ impl Engine {
         engine
     }
 
-    #[allow(dead_code)]
     pub fn set_new_store(&mut self, store: &Arc<RwLock<Store>>) {
         self.store = store.clone();
         for queue in self.ctl_queues.iter_mut() {
