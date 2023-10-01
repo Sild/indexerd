@@ -68,7 +68,7 @@ fn process(worker_data: &WorkerData, http_task: HttpTask) {
             config: &worker_data.config,
         },
     };
-    let res = mock_task(&worker_task);
+    let res = 1; //mock_task(&worker_task);
     worker_task
         .http_task
         .respond(&format!("worker_num={}, result={}", worker_data.num, res))
