@@ -1,5 +1,5 @@
 use crate::config;
-use crate::data::objects::Storable;
+use crate::data::objects_traits::Storable;
 use crate::data::store::Store;
 use crate::data::{select, slave};
 use crate::engine;
@@ -7,6 +7,7 @@ use crate::helpers;
 use logging_timer::stime;
 use mysql_cdc::providers::mysql::gtid::gtid_set::GtidSet;
 use std::error::Error;
+use std::fmt::Debug;
 use std::mem::swap;
 use std::ops::DerefMut;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -28,6 +29,7 @@ pub struct Updater {
     cron: Option<JoinHandle<()>>,
 }
 
+#[derive(Debug)]
 pub enum EventType {
     INSERT,
     #[allow(dead_code)]
@@ -139,7 +141,7 @@ fn cron_loop(updater: Arc<RwLock<Updater>>) {
     }
 }
 
-pub fn apply_to_store<T: Storable>(
+pub fn apply_to_store<T: Storable + Debug>(
     updater: &UpdaterPtr,
     obj: T,
     old_obj: Option<T>,
@@ -147,6 +149,12 @@ pub fn apply_to_store<T: Storable>(
 ) {
     let store_ptr = updater.write().unwrap().write_store.clone();
     let mut store_locked = store_ptr.write().unwrap();
+    log::debug!(
+        "apply_to_store: action={:?}, old={:?}, old_obj={:?}",
+        ev_type,
+        obj,
+        old_obj
+    );
     match ev_type {
         EventType::INSERT => {
             obj.insert(store_locked.deref_mut());

@@ -1,5 +1,5 @@
 use crate::config;
-use crate::data::objects::MysqlObject;
+use crate::data::objects_traits::MysqlObject;
 use crate::data::updater::{EventType, Updater, UpdaterPtr};
 use crate::data::{objects, select, updater};
 use crate::helpers::StopChecker;
@@ -25,9 +25,9 @@ enum SupportedTypes {
     Campaign,
     Package,
     Pad,
+    PadRelation,
+    TargetingPad,
     Unknown,
-    // PadRelation,
-    // TargetingPad,
 }
 
 pub type FieldMapping = HashMap<String, usize>;
@@ -110,8 +110,6 @@ fn process_events(ctx: &mut Context, events: BinlogEvents) {
 }
 
 fn process_write(ctx: &mut Context, events: &WriteRowsEvent) {
-    log::info!("table_id: {}, events: {:?}", events.table_id, events);
-
     for ev in events.rows.iter() {
         if let Some(obj_type) = ctx.table_id_map.get(&events.table_id) {
             match obj_type {
@@ -139,23 +137,34 @@ fn process_write(ctx: &mut Context, events: &WriteRowsEvent) {
                         EventType::INSERT,
                     );
                 }
+                SupportedTypes::PadRelation => {
+                    updater::apply_to_store(
+                        &ctx.updater,
+                        objects::PadRelation::from_slave(ev, &ctx.fields_map),
+                        None,
+                        EventType::INSERT,
+                    );
+                }
+                SupportedTypes::TargetingPad => {
+                    updater::apply_to_store(
+                        &ctx.updater,
+                        objects::TargetingPad::from_slave(ev, &ctx.fields_map),
+                        None,
+                        EventType::INSERT,
+                    );
+                }
                 SupportedTypes::Unknown => {}
             };
         }
-        log::info!("table_id: {}, write_ev: {:?}", events.table_id, ev);
     }
 }
 
 fn process_update(_ctx: &mut Context, events: &UpdateRowsEvent) {
-    for ev in events.rows.iter() {
-        log::info!("table_id: {}, update_ev: {:?}", events.table_id, ev)
-    }
+    for ev in events.rows.iter() {}
 }
 
 fn process_delete(_ctx: &mut Context, events: &DeleteRowsEvent) {
-    for ev in events.rows.iter() {
-        log::info!("table_id: {}, delete_ev: {:?}", events.table_id, ev)
-    }
+    for ev in events.rows.iter() {}
 }
 
 fn process_table_map(ctx: &mut Context, event: &TableMapEvent) {
@@ -190,6 +199,10 @@ fn fill_fields_map<T: MysqlObject>(
             .enumerate()
             .map(|(pos, field)| (field.clone(), pos)),
     );
-    log::debug!("table: {}, fields: {:?} ", T::table(), type_fields);
+    log::trace!(
+        "fill_fields_map: table='{}', fields='{:?}'",
+        T::table(),
+        type_fields
+    );
     fields_map.insert(T::table().into(), type_fields);
 }

@@ -1,6 +1,6 @@
 use crate::config;
-use crate::data::objects::Storable;
-use crate::data::objects::{Campaign, MysqlObject, Package, Pad};
+use crate::data::objects::{Campaign, Package, Pad};
+use crate::data::objects_traits::{MysqlObject, Storable};
 use crate::data::updater;
 use crate::data::updater::UpdaterPtr;
 use logging_timer::stime;
@@ -8,6 +8,7 @@ use mysql::prelude::*;
 use mysql::*;
 use mysql_cdc::providers::mysql::gtid::gtid_set::GtidSet;
 use std::error::Error;
+use std::fmt::Debug;
 
 pub fn get_connection(db_conf: &config::DB) -> Result<PooledConn> {
     let url = format!(
@@ -48,7 +49,7 @@ pub fn init(updater: &UpdaterPtr, db_conf: &config::DB) -> Result<(), Box<dyn Er
 // select all objects from db and store type table id
 fn init_objects<T>(updater: &UpdaterPtr, conn: &mut PooledConn) -> Result<(), mysql::Error>
 where
-    T: MysqlObject + FromRow + Storable + Default,
+    T: MysqlObject + FromRow + Storable + Default + Debug,
 {
     let query = format!("SELECT * FROM {}", T::table());
 

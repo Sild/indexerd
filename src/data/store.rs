@@ -1,17 +1,31 @@
 use std::collections::HashMap;
 
 use crate::data::aci::ActiveCampaignIndex;
-use crate::data::objects::Storable;
 use crate::data::objects::{Campaign, IdType, Package, Pad};
+use crate::data::objects::{PadRelation, TargetingPad};
+use crate::data::objects_traits::{MysqlObject, Storable, StorableRaw};
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 struct RawDataStorage {
-    campaigns: HashMap<IdType, Campaign>,
-    packages: HashMap<IdType, Package>,
-    pads: HashMap<IdType, Pad>,
+    data: HashMap<&'static str, HashMap<IdType, Box<dyn StorableRaw + Sync + Send>>>,
 }
 
-#[derive(Default, Clone)]
+impl RawDataStorage {
+    pub fn update<T: MysqlObject + StorableRaw + Sync + Send + 'static>(&mut self, obj: T) {
+        self.data
+            .entry(T::table())
+            .or_insert(HashMap::new())
+            .insert(obj.get_id(), Box::new(obj));
+    }
+    pub fn delete<T: MysqlObject + StorableRaw + Sync + Send + 'static>(&mut self, obj: T) {
+        self.data
+            .entry(T::table())
+            .or_insert(HashMap::new())
+            .remove(&obj.get_id());
+    }
+}
+
+#[derive(Default)]
 pub struct Store {
     raw_data: RawDataStorage,
     _aci: ActiveCampaignIndex,
@@ -25,52 +39,60 @@ impl Store {
 
 impl Storable for Campaign {
     fn insert(self, store: &mut Store) {
-        log::debug!("insert campaign: {:?}", self);
-        store.raw_data.campaigns.insert(self.id, self);
+        store.raw_data.update(self);
     }
     fn update(self, store: &mut Store, _old: Option<Self>) {
-        log::debug!("update campaign: {:?}", self);
-        store.raw_data.campaigns.insert(self.id, self);
+        store.raw_data.update(self);
     }
     fn delete(self, store: &mut Store) {
-        log::debug!("delete campaign: {:?}", self);
-        store.raw_data.campaigns.insert(self.id, self);
+        store.raw_data.delete(self);
     }
 }
 
 impl Storable for Package {
     fn insert(self, store: &mut Store) {
-        log::debug!("insert package: {:?}", self);
-        store.raw_data.packages.insert(self.id, self);
+        store.raw_data.update(self);
     }
     fn update(self, store: &mut Store, _old: Option<Self>) {
-        log::debug!("update package: {:?}", self);
-        store.raw_data.packages.insert(self.id, self);
+        store.raw_data.update(self);
     }
     fn delete(self, store: &mut Store) {
-        log::debug!("delete package: {:?}", self);
-        store.raw_data.packages.insert(self.id, self);
+        store.raw_data.delete(self);
     }
 }
 
 impl Storable for Pad {
     fn insert(self, store: &mut Store) {
-        log::debug!("insert pad: {:?}", self);
-        store.raw_data.pads.insert(self.id, self);
+        store.raw_data.update(self);
     }
     fn update(self, store: &mut Store, _old: Option<Self>) {
-        log::debug!("update pad: {:?}", self);
-        store.raw_data.pads.insert(self.id, self);
+        store.raw_data.update(self);
     }
     fn delete(self, store: &mut Store) {
-        log::debug!("delete pad: {:?}", self);
-        store.raw_data.pads.insert(self.id, self);
+        store.raw_data.delete(self);
     }
 }
 
-impl RawDataStorage {
-    #![allow(dead_code)]
-    pub fn get(&self, id: &IdType) -> Option<&Campaign> {
-        return self.campaigns.get(id);
+impl Storable for PadRelation {
+    fn insert(self, store: &mut Store) {
+        store.raw_data.update(self);
+    }
+    fn update(self, store: &mut Store, _old: Option<Self>) {
+        store.raw_data.update(self);
+    }
+    fn delete(self, store: &mut Store) {
+        store.raw_data.delete(self);
+    }
+}
+
+impl Storable for TargetingPad {
+    fn insert(self, store: &mut Store) {
+        store.raw_data.update(self);
+    }
+    fn update(self, store: &mut Store, _old: Option<Self>) {
+        store.raw_data.update(self);
+    }
+    fn delete(self, store: &mut Store) {
+        store.raw_data.delete(self);
     }
 }

@@ -21,6 +21,7 @@ pub fn mysql_object(input: TokenStream) -> TokenStream {
     // Return the generated impl
     gen.parse().unwrap()
 }
+
 struct FieldInfo {
     pub name: Option<Ident>,
     pub t: Ty,
@@ -71,6 +72,30 @@ fn mysql_object_impl(ast: &syn::DeriveInput) -> quote::Tokens {
                     #(#member_init)*
                 };
                 obj
+            }
+        }
+    }
+}
+
+#[proc_macro_derive(StorableRaw)]
+pub fn storable_raw(input: TokenStream) -> TokenStream {
+    // Construct a string representation of the type definition
+    let s = input.to_string();
+    // Parse the string representation
+    let ast = syn::parse_derive_input(&s).unwrap();
+    // Build the impl
+    let gen = storable_raw_impl(&ast);
+    // Return the generated impl
+    gen.parse().unwrap()
+}
+
+fn storable_raw_impl(ast: &syn::DeriveInput) -> quote::Tokens {
+    let class_name = &ast.ident;
+
+    quote! {
+        impl StorableRaw for #class_name {
+            fn get_id(&self) -> IdType {
+                self.id
             }
         }
     }
