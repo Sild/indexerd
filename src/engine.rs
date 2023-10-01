@@ -1,5 +1,6 @@
 extern crate crossbeam_channel;
 extern crate log;
+
 use crate::data::store::Store;
 use crate::task::Task;
 
@@ -50,15 +51,23 @@ impl Engine {
 
     pub fn set_new_store(&mut self, store: &Arc<RwLock<Store>>) {
         self.store = store.clone();
+        // let counter = Arc::new(AtomicUsize::new(0));
         for queue in self.ctl_queues.iter_mut() {
             let store_copy = self.store.clone();
+            // let counter_copy = counter.clone();
             let func = move |worker_data: &mut WorkerData| {
                 worker_data.store = store_copy;
+                // counter_copy.store(
+                //     counter_copy.load(Ordering::Relaxed).add(1),
+                //     Ordering::Relaxed,
+                // );
             };
             if let Err(e) = queue.send(Box::new(func)) {
                 log::warn!("Fail to add task to ctl_queue: {}", e);
             }
         }
+        // wait until all workers get new store
+        // while counter.load(Ordering::Relaxed) < self.workers.len() {}
     }
 
     pub fn update_config(&mut self, conf: config::Engine) {

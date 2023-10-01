@@ -3,6 +3,7 @@ use crate::data::objects::{Campaign, Package, Pad};
 use crate::data::objects_traits::{MysqlObject, Storable};
 use crate::data::updater;
 use crate::data::updater::UpdaterPtr;
+
 use logging_timer::stime;
 use mysql::prelude::*;
 use mysql::*;
@@ -49,7 +50,7 @@ pub fn init(updater: &UpdaterPtr, db_conf: &config::DB) -> Result<(), Box<dyn Er
 // select all objects from db and store type table id
 fn init_objects<T>(updater: &UpdaterPtr, conn: &mut PooledConn) -> Result<(), mysql::Error>
 where
-    T: MysqlObject + FromRow + Storable + Default + Debug,
+    T: MysqlObject + FromRow + Storable + Default + Debug + Clone + Sync + Send + 'static,
 {
     let query = format!("SELECT * FROM {}", T::table());
 

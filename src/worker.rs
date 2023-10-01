@@ -1,5 +1,5 @@
 extern crate rand;
-use crate::data::store;
+use crate::data::store::Store;
 use crate::task::Task;
 use crate::{config, helpers};
 use crossbeam_channel::Receiver;
@@ -16,7 +16,7 @@ pub struct WorkerData {
     pub num: i32,
     pub task_queue: Receiver<Task>,
     pub ctl_task_queue: Receiver<ControlTask>,
-    pub store: Arc<RwLock<store::Store>>,
+    pub store: Arc<RwLock<Store>>,
     pub config: config::Worker,
 }
 

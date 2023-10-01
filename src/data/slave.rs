@@ -160,11 +160,11 @@ fn process_write(ctx: &mut Context, events: &WriteRowsEvent) {
 }
 
 fn process_update(_ctx: &mut Context, events: &UpdateRowsEvent) {
-    for ev in events.rows.iter() {}
+    for _ev in events.rows.iter() {}
 }
 
 fn process_delete(_ctx: &mut Context, events: &DeleteRowsEvent) {
-    for ev in events.rows.iter() {}
+    for _ev in events.rows.iter() {}
 }
 
 fn process_table_map(ctx: &mut Context, event: &TableMapEvent) {

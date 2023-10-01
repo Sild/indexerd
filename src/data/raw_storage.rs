@@ -12,13 +12,13 @@ impl Storage {
     pub fn update<T: MysqlObject + StorableRaw + Sync + Send + 'static>(&mut self, obj: T) {
         self.data
             .entry(T::table())
-            .or_insert(HashMap::new())
+            .or_default()
             .insert(obj.get_id(), Box::new(obj));
     }
     pub fn delete<T: MysqlObject + StorableRaw + Sync + Send + 'static>(&mut self, obj: T) {
         self.data
             .entry(T::table())
-            .or_insert(HashMap::new())
+            .or_default()
             .remove(&obj.get_id());
     }
 

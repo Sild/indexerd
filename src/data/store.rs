@@ -1,5 +1,5 @@
 use crate::data::aci::ActiveCampaignIndex;
-use crate::data::objects::{Campaign, IdType, Package, Pad};
+use crate::data::objects::{Campaign, Package, Pad};
 use crate::data::objects::{PadRelation, TargetingPad};
 use crate::data::objects_traits::Storable;
 use crate::data::raw_storage;
@@ -14,6 +14,7 @@ pub struct IndexStat {
 }
 #[derive(Default)]
 pub struct Store {
+    pub id: String, // just to identify it somehow
     raw_data: raw_storage::Storage,
     _aci: ActiveCampaignIndex,
     index_stat: IndexStat,

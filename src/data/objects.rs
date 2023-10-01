@@ -2,7 +2,7 @@ use crate::data::mysql_cdc_converter::convert;
 use crate::data::objects_traits::{MysqlObject, StorableRaw};
 use crate::data::slave::FieldMapping;
 use mysql::prelude::FromRow;
-use mysql_cdc::events::row_events::row_data::RowData;
+
 use std::collections::HashMap;
 
 pub type IdType = i32;
