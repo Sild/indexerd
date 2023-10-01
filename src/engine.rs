@@ -2,7 +2,7 @@ extern crate crossbeam_channel;
 extern crate log;
 
 use crate::data::store::Store;
-use crate::task::Task;
+use crate::task::HttpTask;
 
 use crate::worker::{ControlTask, WorkerData};
 use crate::{config, worker};
@@ -20,7 +20,7 @@ pub struct Engine {
 }
 
 impl Engine {
-    pub fn new(conf: &config::Engine, task_queue_rcv: Receiver<Task>) -> Self {
+    pub fn new(conf: &config::Engine, task_queue_rcv: Receiver<HttpTask>) -> Self {
         let mut engine = Engine {
             store: Arc::new(RwLock::new(Store::default())),
             shutdown_workers: Arc::new(AtomicBool::new(false)),

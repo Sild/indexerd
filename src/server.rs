@@ -4,7 +4,7 @@ extern crate hwloc2;
 extern crate libc;
 extern crate tiny_http;
 extern crate tokio;
-use crate::task::Task;
+use crate::task::HttpTask;
 use crate::{config, engine, helpers};
 use crossbeam_channel::Sender;
 
@@ -97,7 +97,7 @@ fn run_http_listener(
     shutdown: Arc<AtomicBool>,
     port: u16,
     th_name: &str,
-    send_queue: &Sender<Task>,
+    send_queue: &Sender<HttpTask>,
 ) -> Result<JoinHandle<()>, Error> {
     let bind_addr = format!("0.0.0.0:{}", port);
     log::info!("thread {} (bind: {}) starting...", th_name, bind_addr);
@@ -117,7 +117,11 @@ fn run_http_listener(
     Ok(th)
 }
 
-fn service_loop(service: tiny_http::Server, engine_queue: Sender<Task>, shutdown: Arc<AtomicBool>) {
+fn service_loop(
+    service: tiny_http::Server,
+    engine_queue: Sender<HttpTask>,
+    shutdown: Arc<AtomicBool>,
+) {
     let mut stop_checker = helpers::StopChecker::new(shutdown);
     while !stop_checker.is_time() {
         if let Ok(Some(req)) = service.recv_timeout(Duration::from_millis(50)) {
@@ -130,7 +134,7 @@ fn service_loop(service: tiny_http::Server, engine_queue: Sender<Task>, shutdown
     );
 }
 
-fn handle_connection(req: tiny_http::Request, queue: &Sender<Task>) {
+fn handle_connection(req: tiny_http::Request, queue: &Sender<HttpTask>) {
     log::debug!(
         "received request! method: {:?}, url: {:?}, headers: {:?}",
         req.method(),
@@ -138,7 +142,7 @@ fn handle_connection(req: tiny_http::Request, queue: &Sender<Task>) {
         req.headers()
     );
 
-    let task = Task::new(req);
+    let task = HttpTask::new(req);
 
     if let Err(e) = queue.send(task) {
         log::warn!("Fail to add request to queue with err={}", e)
