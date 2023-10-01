@@ -1,7 +1,8 @@
 extern crate crossbeam_channel;
 extern crate log;
+
 use crate::data::store::Store;
-use crate::task::Task;
+use crate::task::HttpTask;
 
 use crate::worker::{ControlTask, WorkerData};
 use crate::{config, worker};
@@ -19,7 +20,7 @@ pub struct Engine {
 }
 
 impl Engine {
-    pub fn new(conf: &config::Engine, task_queue_rcv: Receiver<Task>) -> Self {
+    pub fn new(conf: &config::Engine, task_queue_rcv: Receiver<HttpTask>) -> Self {
         let mut engine = Engine {
             store: Arc::new(RwLock::new(Store::default())),
             shutdown_workers: Arc::new(AtomicBool::new(false)),
@@ -37,7 +38,7 @@ impl Engine {
                 task_queue: task_queue_rcv.clone(),
                 ctl_task_queue: ctl_queue_rcv,
                 store: engine.store.clone(),
-                config: engine.conf.worker.clone(),
+                config: engine.conf.worker,
             };
 
             let th = worker::run(worker_data, engine.shutdown_workers.clone());
@@ -48,24 +49,31 @@ impl Engine {
         engine
     }
 
-    #[allow(dead_code)]
     pub fn set_new_store(&mut self, store: &Arc<RwLock<Store>>) {
         self.store = store.clone();
+        // let counter = Arc::new(AtomicUsize::new(0));
         for queue in self.ctl_queues.iter_mut() {
             let store_copy = self.store.clone();
+            // let counter_copy = counter.clone();
             let func = move |worker_data: &mut WorkerData| {
                 worker_data.store = store_copy;
+                // counter_copy.store(
+                //     counter_copy.load(Ordering::Relaxed).add(1),
+                //     Ordering::Relaxed,
+                // );
             };
             if let Err(e) = queue.send(Box::new(func)) {
                 log::warn!("Fail to add task to ctl_queue: {}", e);
             }
         }
+        // wait until all workers get new store
+        // while counter.load(Ordering::Relaxed) < self.workers.len() {}
     }
 
     pub fn update_config(&mut self, conf: config::Engine) {
         self.conf = conf;
         for queue in self.ctl_queues.iter_mut() {
-            let conf_copy = self.conf.worker.clone();
+            let conf_copy = self.conf.worker;
             let func = move |worker_data: &mut WorkerData| {
                 worker_data.config = conf_copy;
             };

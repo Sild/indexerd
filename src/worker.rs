@@ -1,9 +1,11 @@
 extern crate rand;
-use crate::data::store;
-use crate::task::Task;
+
+use crate::data::store::Store;
+use crate::task::{HttpTask, TaskContext, WorkerTask};
 use crate::{config, helpers};
 use crossbeam_channel::Receiver;
 use rand::Rng;
+use std::ops::Deref;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, RwLock};
 use std::thread;
@@ -14,9 +16,9 @@ pub type ControlTask = Box<dyn FnOnce(&mut WorkerData) + Send + 'static>;
 
 pub struct WorkerData {
     pub num: i32,
-    pub task_queue: Receiver<Task>,
+    pub task_queue: Receiver<HttpTask>,
     pub ctl_task_queue: Receiver<ControlTask>,
-    pub store: Arc<RwLock<store::Store>>,
+    pub store: Arc<RwLock<Store>>,
     pub config: config::Worker,
 }
 
@@ -56,16 +58,23 @@ fn worker_loop(mut worker_data: WorkerData, shutdown: Arc<AtomicBool>) {
     log::info!("worker {} stopped", worker_data.num)
 }
 
-fn process(worker_data: &WorkerData, req: Task) {
+fn process(worker_data: &WorkerData, http_task: HttpTask) {
     log::debug!("worker {} got request", worker_data.num);
-    let res = mock_task(worker_data);
-    req.respond(&format!(
-        "The number is {}, result={}",
-        worker_data.num, res
-    ))
+    let store_r = worker_data.store.read().unwrap();
+    let worker_task = WorkerTask {
+        http_task,
+        context: TaskContext {
+            store: store_r.deref(),
+            config: &worker_data.config,
+        },
+    };
+    let res = 1; //mock_task(&worker_task);
+    worker_task
+        .http_task
+        .respond(&format!("worker_num={}, result={}", worker_data.num, res))
 }
 
-fn mock_task(worker_data: &WorkerData) -> String {
+fn mock_task(worker_task: &WorkerTask) -> String {
     let mut rng = rand::thread_rng();
     let matrix_size = 5;
 
@@ -89,7 +98,7 @@ fn mock_task(worker_data: &WorkerData) -> String {
     let mut answer = String::new();
     for row in res.iter() {
         for elem in row.iter() {
-            let val = match worker_data.config.need_multi {
+            let val = match worker_task.context.config.need_multi {
                 true => elem * 2.0,
                 false => *elem,
             };

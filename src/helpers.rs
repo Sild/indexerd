@@ -1,5 +1,5 @@
 use hwloc2::{CpuBindFlags, CpuSet, ObjectType, Topology};
-use log;
+
 use std::error::Error;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

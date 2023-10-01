@@ -1,76 +1,92 @@
-use std::collections::HashMap;
-
 use crate::data::aci::ActiveCampaignIndex;
-use crate::data::objects::Storable;
-use crate::data::objects::{Campaign, IdType, Package, Pad};
+use crate::data::objects::{Campaign, Package, Pad};
+use crate::data::objects::{PadRelation, TargetingPad};
+use crate::data::objects_traits::Storable;
+use crate::data::raw_storage;
+use crate::helpers;
 
-#[derive(Default, Clone)]
-struct RawDataStorage {
-    campaigns: HashMap<IdType, Campaign>,
-    packages: HashMap<IdType, Package>,
-    pads: HashMap<IdType, Pad>,
+#[derive(Default)]
+pub struct IndexStat {
+    iteration: u64,
+    rebuild_start_ts: u64,
+    rebuild_end_ts: u64,
+    activation_ts: u64, // the time when store became read-only last time
 }
-
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct Store {
-    raw_data: RawDataStorage,
+    pub id: String, // just to identify it somehow
+    raw_data: raw_storage::Storage,
     _aci: ActiveCampaignIndex,
-    pub name: String,
+    index_stat: IndexStat,
 }
 
 impl Store {
-    #[allow(dead_code)]
-    pub fn build_aci(&mut self) {}
+    pub fn rebuild_index(&mut self, iteration: u64) {
+        self.index_stat.iteration = iteration;
+        self.index_stat.rebuild_start_ts = helpers::time::cur_ts();
+        self.index_stat.rebuild_end_ts = helpers::time::cur_ts();
+    }
+    pub fn get_store_stat(&self) -> &IndexStat {
+        &self.index_stat
+    }
 }
 
 impl Storable for Campaign {
     fn insert(self, store: &mut Store) {
-        log::debug!("insert campaign: {:?}", self);
-        store.raw_data.campaigns.insert(self.id, self);
+        store.raw_data.update(self);
     }
     fn update(self, store: &mut Store, _old: Option<Self>) {
-        log::debug!("update campaign: {:?}", self);
-        store.raw_data.campaigns.insert(self.id, self);
+        store.raw_data.update(self);
     }
     fn delete(self, store: &mut Store) {
-        log::debug!("delete campaign: {:?}", self);
-        store.raw_data.campaigns.insert(self.id, self);
+        store.raw_data.delete(self);
     }
 }
 
 impl Storable for Package {
     fn insert(self, store: &mut Store) {
-        log::debug!("insert package: {:?}", self);
-        store.raw_data.packages.insert(self.id, self);
+        store.raw_data.update(self);
     }
     fn update(self, store: &mut Store, _old: Option<Self>) {
-        log::debug!("update package: {:?}", self);
-        store.raw_data.packages.insert(self.id, self);
+        store.raw_data.update(self);
     }
     fn delete(self, store: &mut Store) {
-        log::debug!("delete package: {:?}", self);
-        store.raw_data.packages.insert(self.id, self);
+        store.raw_data.delete(self);
     }
 }
 
 impl Storable for Pad {
     fn insert(self, store: &mut Store) {
-        log::debug!("insert pad: {:?}", self);
-        store.raw_data.pads.insert(self.id, self);
+        store.raw_data.update(self);
     }
     fn update(self, store: &mut Store, _old: Option<Self>) {
-        log::debug!("update pad: {:?}", self);
-        store.raw_data.pads.insert(self.id, self);
+        store.raw_data.update(self);
     }
     fn delete(self, store: &mut Store) {
-        log::debug!("delete pad: {:?}", self);
-        store.raw_data.pads.insert(self.id, self);
+        store.raw_data.delete(self);
     }
 }
 
-impl RawDataStorage {
-    #![allow(dead_code)]
-    pub fn get(&self, id: &IdType) -> Option<&Campaign> {
-        return self.campaigns.get(id);
+impl Storable for PadRelation {
+    fn insert(self, store: &mut Store) {
+        store.raw_data.update(self);
+    }
+    fn update(self, store: &mut Store, _old: Option<Self>) {
+        store.raw_data.update(self);
+    }
+    fn delete(self, store: &mut Store) {
+        store.raw_data.delete(self);
+    }
+}
+
+impl Storable for TargetingPad {
+    fn insert(self, store: &mut Store) {
+        store.raw_data.update(self);
+    }
+    fn update(self, store: &mut Store, _old: Option<Self>) {
+        store.raw_data.update(self);
+    }
+    fn delete(self, store: &mut Store) {
+        store.raw_data.delete(self);
     }
 }
