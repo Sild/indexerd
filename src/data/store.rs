@@ -34,6 +34,9 @@ impl Store {
     pub fn get_store_stat(&self) -> &IndexStat {
         &self.index_stat
     }
+    pub fn get_raw_data(&self) -> &raw_storage::Storage {
+        &self.raw_data
+    }
 }
 
 impl Storable for Campaign {

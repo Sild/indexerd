@@ -87,7 +87,7 @@ fn process(worker_data: &WorkerData, http_task: HttpTask) {
         };
         search::handle(task);
     } else {
-        http_task.respond(&"unknown method".to_string())
+        http_task.respond_html("unknown method")
     }
     // let res = 1; //mock_task(&worker_task);
     // worker_task

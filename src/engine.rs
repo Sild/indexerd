@@ -4,7 +4,6 @@ extern crate log;
 use crate::data::store::Store;
 use crate::task::HttpTask;
 
-
 use crate::worker::{ControlTask, WorkerData};
 use crate::{config, worker};
 use crossbeam_channel::{Receiver, Sender};
