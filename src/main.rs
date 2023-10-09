@@ -12,10 +12,12 @@ mod engine;
 
 use std::sync::Arc;
 
+mod handlers;
 mod helpers;
 mod server;
 mod task;
 mod worker;
+
 use log::LevelFilter;
 use std::sync::{Condvar, Mutex};
 

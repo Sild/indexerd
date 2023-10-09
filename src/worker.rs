@@ -1,7 +1,8 @@
 extern crate rand;
 
 use crate::data::store::Store;
-use crate::task::{HttpTask, TaskContext, WorkerTask};
+use crate::handlers::{admin, search};
+use crate::task::{AdminTask, HttpTask, SearchTask, TaskContext};
 use crate::{config, helpers};
 use crossbeam_channel::Receiver;
 use rand::Rng;
@@ -59,22 +60,42 @@ fn worker_loop(mut worker_data: WorkerData, shutdown: Arc<AtomicBool>) {
 }
 
 fn process(worker_data: &WorkerData, http_task: HttpTask) {
-    log::debug!("worker {} got request", worker_data.num);
+    log::debug!(
+        "worker {} got request: {}",
+        worker_data.num,
+        http_task.raw_req.url()
+    );
     let store_r = worker_data.store.read().unwrap();
-    let worker_task = WorkerTask {
-        http_task,
-        context: TaskContext {
-            store: store_r.deref(),
-            config: &worker_data.config,
-        },
-    };
-    let res = 1; //mock_task(&worker_task);
-    worker_task
-        .http_task
-        .respond(&format!("worker_num={}, result={}", worker_data.num, res))
+
+    // TODO something went wrong - I can handle /admin from non-admin port
+    if http_task.raw_req.url().starts_with("/admin") {
+        let task = AdminTask {
+            http_task,
+            context: TaskContext {
+                store: store_r.deref(),
+                config: &worker_data.config,
+            },
+        };
+        admin::handle(task);
+    } else if http_task.raw_req.url().starts_with("/search") {
+        let task = SearchTask {
+            http_task,
+            context: TaskContext {
+                store: store_r.deref(),
+                config: &worker_data.config,
+            },
+        };
+        search::handle(task);
+    } else {
+        http_task.respond(&"unknown method".to_string())
+    }
+    // let res = 1; //mock_task(&worker_task);
+    // worker_task
+    //     .http_task
+    //     .respond(&format!("worker_num={}, result={}", worker_data.num, res))
 }
 
-fn mock_task(worker_task: &WorkerTask) -> String {
+fn mock_task(worker_task: &AdminTask) -> String {
     let mut rng = rand::thread_rng();
     let matrix_size = 5;
 

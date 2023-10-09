@@ -23,7 +23,12 @@ pub struct TaskContext<'a> {
     pub config: &'a config::Worker,
 }
 
-pub struct WorkerTask<'a> {
+pub struct AdminTask<'a> {
+    pub http_task: HttpTask,
+    pub context: TaskContext<'a>,
+}
+
+pub struct SearchTask<'a> {
     pub http_task: HttpTask,
     pub context: TaskContext<'a>,
 }
