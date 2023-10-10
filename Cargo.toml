@@ -25,6 +25,10 @@ mysql = "24.0.0"
 logging_timer = "1.1.0"
 tera = "1"
 include_dir = "0.7.1"
+url = "2.4.1"
+
+[build-dependencies]
+prost-build = "0.12.1"
 
 [profile.dev]
 # inherits = "dev"
