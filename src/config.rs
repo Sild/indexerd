@@ -12,8 +12,7 @@ pub struct Server {
 
 #[derive(Default, Debug, Deserialize, Clone, Eq, PartialEq)]
 pub struct Service {
-    pub admin_port: u16,
-    pub user_port: u16,
+    pub listening_port: u16,
 }
 
 #[derive(Default, Debug, Deserialize, Clone, Eq, PartialEq)]
