@@ -20,8 +20,7 @@ use std::{thread, thread::JoinHandle};
 pub struct Server {
     #[allow(dead_code)]
     conf: config::Server,
-    admin_srv: JoinHandle<()>,
-    user_srv: JoinHandle<()>,
+    http_srv: JoinHandle<()>,
     engine: Arc<RwLock<Engine>>,
     updater: Arc<RwLock<Updater>>,
     stop_flag: Arc<AtomicBool>,
@@ -38,7 +37,7 @@ impl Server {
 
         let admin_srv = run_http_listener(
             stop_flag.clone(),
-            conf.service.admin_port,
+            conf.service.listening_port,
             "admin_srv",
             &send_queue,
         )?;
@@ -46,17 +45,9 @@ impl Server {
         let engine = Arc::new(RwLock::new(engine::Engine::new(&conf.engine, rcv_queue)));
         let updater = Updater::new(&conf.updater, engine.clone()).unwrap();
 
-        let user_srv = run_http_listener(
-            stop_flag.clone(),
-            conf.service.user_port,
-            "user_srv",
-            &send_queue,
-        )?;
-
         let server = Self {
             conf: conf.clone(),
-            admin_srv,
-            user_srv,
+            http_srv: admin_srv,
             engine,
             updater,
             stop_flag,
@@ -79,13 +70,11 @@ impl Server {
 
         log::info!("stopping services...");
         self.stop_flag.store(true, Ordering::Release);
-        self.user_srv.join().expect("fail join user_srv thread");
-        log::info!("user service stopped");
 
         let mut engine_locked = self.engine.write().unwrap();
         engine_locked.stop();
 
-        self.admin_srv.join().expect("fail join admin_srv thread");
+        self.http_srv.join().expect("fail join admin_srv thread");
         log::info!("admin service stopped");
 
         log::info!("app stopped");

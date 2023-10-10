@@ -1,7 +1,6 @@
 {
   "service": {
-    "admin_port": 8089,
-    "user_port": 8088
+    "listening_port": 8088
   },
   "engine": {
     "worker": {
