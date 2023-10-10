@@ -1,6 +1,7 @@
 use crate::data::objects::IdType;
 use crate::data::objects_traits::{MysqlObject, StorableRaw};
 use std::any::Any;
+use std::collections::hash_map::{Iter, Keys};
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -39,6 +40,18 @@ impl Storage {
                 None => None,
             },
             None => None,
+        }
+    }
+
+    pub fn list<T: MysqlObject>(&self) -> Vec<IdType> {
+        match self.data.get(T::table()) {
+            Some(objects) => Vec::from_iter(
+                objects
+                    .into_iter()
+                    .map(|(x, y)| x.clone())
+                    .collect::<Vec<_>>(),
+            ),
+            None => Vec::default(),
         }
     }
 }

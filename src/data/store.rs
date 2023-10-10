@@ -4,13 +4,14 @@ use crate::data::objects::{PadRelation, TargetingPad};
 use crate::data::objects_traits::Storable;
 use crate::data::raw_storage;
 use crate::helpers;
+use serde::{Deserialize, Serialize};
 
-#[derive(Default)]
+#[derive(Default, Clone, Deserialize, Serialize)]
 pub struct IndexStat {
-    iteration: u64,
-    rebuild_start_ts: u64,
-    rebuild_end_ts: u64,
-    activation_ts: u64, // the time when store became read-only last time
+    pub iteration: u64,
+    pub rebuild_start_ts: u64,
+    pub rebuild_end_ts: u64,
+    pub rebuild_duration_sec: u64,
 }
 #[derive(Default)]
 pub struct Store {
@@ -24,10 +25,17 @@ impl Store {
     pub fn rebuild_index(&mut self, iteration: u64) {
         self.index_stat.iteration = iteration;
         self.index_stat.rebuild_start_ts = helpers::time::cur_ts();
+        // ...
+        // ...
         self.index_stat.rebuild_end_ts = helpers::time::cur_ts();
+        self.index_stat.rebuild_duration_sec =
+            self.index_stat.rebuild_end_ts - self.index_stat.rebuild_start_ts;
     }
     pub fn get_store_stat(&self) -> &IndexStat {
         &self.index_stat
+    }
+    pub fn get_raw_data(&self) -> &raw_storage::Storage {
+        &self.raw_data
     }
 }
 

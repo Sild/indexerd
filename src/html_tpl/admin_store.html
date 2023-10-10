@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>admin/store</title>
+</head>
+<body>
+<a href="/admin">admin</a>
+<h3>admin/store</h3>
+<h5>raw objects:</h5>
+{% for item in objects %}
+<p><a href="/admin/store/{{ item }}">{{ item }}</a></p>
+{% endfor %}
+</body>
+</html>

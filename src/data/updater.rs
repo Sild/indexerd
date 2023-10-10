@@ -9,7 +9,7 @@ use logging_timer::stime;
 use mysql_cdc::providers::mysql::gtid::gtid_set::GtidSet;
 use std::error::Error;
 use std::fmt::Debug;
-use std::ops::{Add, DerefMut};
+use std::ops::{AddAssign, DerefMut};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -91,8 +91,9 @@ impl Updater {
 fn swap_stores(updater: &Arc<RwLock<Updater>>) {
     let mut updater_w = updater.write().unwrap();
     {
+        updater_w.index_iteration.add_assign(1);
         let mut write_store_w = updater_w.write_store.write().unwrap();
-        write_store_w.rebuild_index(updater_w.index_iteration.add(1));
+        write_store_w.rebuild_index(updater_w.index_iteration);
     }
 
     let tmp = updater_w.write_store.clone();
