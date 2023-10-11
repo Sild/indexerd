@@ -1,2 +1,2 @@
-/test
-/123
+/admin/status
+/search
