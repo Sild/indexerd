@@ -12,9 +12,9 @@ pub mod time {
 }
 
 pub fn bind_thread(core_num: usize) {
-    if cfg!(unix) {
-        return;
-    }
+    // if cfg!(unix) {
+    //     return;
+    // }
     let t_id = unsafe { libc::pthread_self() };
     let th = thread::current();
     let t_name = th.name().unwrap_or("empty");

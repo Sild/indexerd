@@ -27,7 +27,7 @@ pub fn run(worker_data: WorkerData, shutdown: Arc<AtomicBool>) -> JoinHandle<()>
     thread::Builder::new()
         .name(format!("worker_{}", worker_data.num))
         .spawn(move || {
-            helpers::bind_thread((worker_data.num + 1) as usize);
+            helpers::bind_thread((worker_data.num + 2) as usize);
             worker_loop(worker_data, shutdown)
         })
         .unwrap()

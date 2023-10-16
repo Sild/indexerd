@@ -29,7 +29,7 @@ impl Engine {
             conf: conf.clone(),
         };
 
-        for worker_num in 0..=2 {
+        for worker_num in 0..=1 {
             let (ctl_queue_snd, ctl_queue_rcv): (Sender<ControlTask>, Receiver<ControlTask>) =
                 crossbeam_channel::bounded(1000);
 
