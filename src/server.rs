@@ -35,10 +35,10 @@ impl Server {
         let (send_queue, rcv_queue) = crossbeam_channel::bounded(1000);
         let stop_flag = Arc::new(AtomicBool::new(false));
 
-        let admin_srv = run_http_listener(
+        let http_srv = run_http_listener(
             stop_flag.clone(),
             conf.service.listening_port,
-            "admin_srv",
+            "http_srv",
             &send_queue,
         )?;
 
@@ -47,7 +47,7 @@ impl Server {
 
         let server = Self {
             conf: conf.clone(),
-            http_srv: admin_srv,
+            http_srv,
             engine,
             updater,
             stop_flag,
