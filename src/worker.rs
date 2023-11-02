@@ -67,24 +67,15 @@ fn process(worker_data: &WorkerData, http_task: HttpTask) {
     );
     let store_r = worker_data.store.read().unwrap();
 
-    // TODO something went wrong - I can handle /admin from non-admin port
-    if http_task.raw_req.url().starts_with("/admin") {
-        let task = AdminTask {
-            http_task,
-            context: TaskContext {
-                store: store_r.deref(),
-                config: &worker_data.config,
-            },
-        };
+    let req_url = http_task.raw_req.url();
+    let store_ref = store_r.deref();
+    let config = &worker_data.config;
+
+    if req_url.starts_with("/admin") {
+        let task = AdminTask::new(http_task, store_ref, config);
         admin::handle(task);
-    } else if http_task.raw_req.url().starts_with("/search") {
-        let task = SearchTask {
-            http_task,
-            context: TaskContext {
-                store: store_r.deref(),
-                config: &worker_data.config,
-            },
-        };
+    } else if req_url.starts_with("/search") {
+        let task = SearchTask::new(http_task, store_ref, config);
         search::handle(task);
     } else {
         http_task.respond_html("unknown method")

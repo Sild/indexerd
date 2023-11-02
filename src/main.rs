@@ -49,15 +49,6 @@ fn main() -> std::io::Result<()> {
     // get config then
     let conf_path = get_config_path();
 
-    // let c1 = objects::Campaign::from_select();
-    // let p1 = objects::Package::from_select();
-    // let pad1 = objects::Pad::from_select();
-    //
-    // let mut data_manager = data::data_manager::DataManager::default();
-    // data_manager.insert(c1);
-    // data_manager.insert(p1);
-    // data_manager.insert(pad1);
-
     let wait_pair = Arc::new((Mutex::new(true), Condvar::new()));
 
     let server_conf = config::Server::from_file(conf_path.as_str())?;
