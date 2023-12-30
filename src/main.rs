@@ -15,6 +15,7 @@ use std::sync::Arc;
 mod handlers;
 mod helpers;
 mod proto;
+mod request;
 mod server;
 mod task;
 mod worker;
