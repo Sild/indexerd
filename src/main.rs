@@ -1,9 +1,9 @@
 #[macro_use]
 extern crate indexerd_derive;
+extern crate base64;
 extern crate ctrlc;
 extern crate hwloc2;
 extern crate log;
-extern crate mysql;
 extern crate serde_json;
 
 mod config;
@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 mod handlers;
 mod helpers;
+mod proto;
 mod server;
 mod task;
 mod worker;

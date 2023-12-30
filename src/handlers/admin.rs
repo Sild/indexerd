@@ -8,7 +8,7 @@ use tera::{Error, Tera};
 // static my_str: &str = include_str!("$CARGO_MANIFEST_DIR/src/html_tpl/admin.html");
 
 pub fn handle(task: AdminTask) {
-    let url = task.http_task.raw_req.url();
+    let url = task.http_task.url();
     let _ = url.strip_suffix('/');
     let html_response = match url {
         "/admin" => handle_root(&task),
@@ -47,7 +47,7 @@ fn handle_status(task: &AdminTask) -> Result<String, Error> {
     Ok(serde_json::to_string(&status).unwrap_or("fail to deserialize".to_string()))
 }
 
-fn handle_store(task: &AdminTask) -> Result<String, Error> {
+fn handle_store(_task: &AdminTask) -> Result<String, Error> {
     let tpl_name = "admin_store.html";
     let tpl_data = include_str!("../html_tpl/admin_store.html");
     let mut tera = Tera::default();

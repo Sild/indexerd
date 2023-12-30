@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package req;
+package search_params;
 
-message Req {
+message SearchParams {
     string name = 1;
     int32 id = 2;
     string email = 3;

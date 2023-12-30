@@ -2,7 +2,7 @@ extern crate rand;
 
 use crate::data::store::Store;
 use crate::handlers::{admin, search};
-use crate::task::{AdminTask, HttpTask, SearchTask, TaskContext};
+use crate::task::{AdminTask, HttpTask, SearchTask};
 use crate::{config, helpers};
 use crossbeam_channel::Receiver;
 use rand::Rng;
@@ -63,11 +63,11 @@ fn process(worker_data: &WorkerData, http_task: HttpTask) {
     log::debug!(
         "worker {} got request: {}",
         worker_data.num,
-        http_task.raw_req.url()
+        http_task.url()
     );
     let store_r = worker_data.store.read().unwrap();
 
-    let req_url = http_task.raw_req.url();
+    let req_url = http_task.url();
     let store_ref = store_r.deref();
     let config = &worker_data.config;
 
@@ -86,7 +86,7 @@ fn process(worker_data: &WorkerData, http_task: HttpTask) {
     //     .respond(&format!("worker_num={}, result={}", worker_data.num, res))
 }
 
-fn mock_task(worker_task: &AdminTask) -> String {
+fn _mock_task(worker_task: &AdminTask) -> String {
     let mut rng = rand::thread_rng();
     let matrix_size = 5;
 
@@ -105,7 +105,7 @@ fn mock_task(worker_task: &AdminTask) -> String {
             matrix_b[i].push(rng.gen_range(0.0..999.0));
         }
     }
-    let res = matrix_multiply(&matrix_a, &matrix_b);
+    let res = _matrix_multiply(&matrix_a, &matrix_b);
 
     let mut answer = String::new();
     for row in res.iter() {
@@ -120,7 +120,7 @@ fn mock_task(worker_task: &AdminTask) -> String {
     answer
 }
 
-fn matrix_multiply(a: &Vec<Vec<f64>>, b: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+fn _matrix_multiply(a: &Vec<Vec<f64>>, b: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     let mut result = Vec::new();
 
     for i in 0..a.len() {

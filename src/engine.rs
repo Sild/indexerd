@@ -70,6 +70,7 @@ impl Engine {
         // while counter.load(Ordering::Relaxed) < self.workers.len() {}
     }
 
+    #[allow(dead_code)]
     pub fn update_config(&mut self, conf: config::Engine) {
         self.conf = conf;
         for queue in self.ctl_queues.iter_mut() {
