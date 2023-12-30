@@ -33,11 +33,11 @@ pub struct Updater {
 
 #[derive(Debug, Clone)]
 pub enum EventType {
-    INSERT,
+    Insert,
     #[allow(dead_code)]
-    UPDATE,
+    Update,
     #[allow(dead_code)]
-    DELETE,
+    Delete,
 }
 
 impl Updater {
@@ -174,13 +174,13 @@ pub fn apply_to_store<T: Storable + Clone + Debug + Sync + Send + 'static>(
 
     let apply_func = move |store: &mut Store| {
         match ev_type.clone() {
-            EventType::INSERT => {
+            EventType::Insert => {
                 obj.clone().insert(store);
             }
-            EventType::UPDATE => {
+            EventType::Update => {
                 obj.clone().update(store, old_obj);
             }
-            EventType::DELETE => {
+            EventType::Delete => {
                 obj.clone().delete(store);
             }
         };

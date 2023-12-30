@@ -82,9 +82,9 @@ impl SearchParams {
             RequestFormat::Proto => {
                 let proto = crate::proto::search_params::SearchParams::decode(&*decoded)?;
                 Ok(SearchParams {
-                    name: proto.name.into(),
-                    id: proto.id.into(),
-                    email: proto.email.into(),
+                    name: proto.name,
+                    id: proto.id,
+                    email: proto.email,
                 })
             }
         }

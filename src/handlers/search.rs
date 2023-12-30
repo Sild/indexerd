@@ -7,9 +7,8 @@ pub fn handle(task: SearchTask) {
                 .respond_html(format!("search_params = {:?}", search_req).as_str());
         }
         Err(e) => {
-            task.http_task.respond_html(
-                format!("malformed request: {}\n{}", e.to_string(), e.backtrace()).as_str(),
-            );
+            task.http_task
+                .respond_html(format!("malformed request: {}\n{}", e, e.backtrace()).as_str());
         }
     }
 }

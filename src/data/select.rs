@@ -56,7 +56,7 @@ where
 
     conn.query_map(query, |row| {
         let object = T::from_row(row);
-        updater::apply_to_store(updater, object, None, updater::EventType::INSERT);
+        updater::apply_to_store(updater, object, None, updater::EventType::Insert);
     })?;
 
     Ok(())

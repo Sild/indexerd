@@ -46,12 +46,8 @@ impl Storage {
 
     pub fn list<T: MysqlObject>(&self) -> Vec<IdType> {
         match self.data.get(T::table()) {
-            Some(objects) => Vec::from_iter(
-                objects
-                    .into_iter()
-                    .map(|(x, _)| x.clone())
-                    .collect::<Vec<_>>(),
-            ),
+            Some(objects) => Vec::from_iter(objects.iter().map(|(x, _)| *x).collect::<Vec<_>>()),
+
             None => Vec::default(),
         }
     }
