@@ -12,9 +12,9 @@ pub mod time {
 }
 
 pub fn bind_thread(core_num: usize) {
-    if cfg!(unix) {
-        return;
-    }
+    // if cfg!(unix) {
+    //     return;
+    // }
     let t_id = unsafe { libc::pthread_self() };
     let th = thread::current();
     let t_name = th.name().unwrap_or("empty");
@@ -35,19 +35,15 @@ pub fn bind_thread(core_num: usize) {
         }
     };
 
-    // cpu-binding doesn't work for macos
-    if cfg!(linux) {
-        if let Err(e) =
-            topo.set_cpubind_for_thread(t_id, cpuset_to_bind, CpuBindFlags::CPUBIND_THREAD)
-        {
-            log::error!(
-                "fail to bind thread={} to core={}, err={:?}",
-                t_name,
-                core_num,
-                e
-            );
-            return;
-        }
+    if let Err(e) = topo.set_cpubind_for_thread(t_id, cpuset_to_bind, CpuBindFlags::CPUBIND_THREAD)
+    {
+        log::error!(
+            "fail to bind thread={} to core={}, err={:?}",
+            t_name,
+            core_num,
+            e
+        );
+        return;
     }
 
     let after = topo.get_cpubind_for_thread(t_id, CpuBindFlags::CPUBIND_THREAD);

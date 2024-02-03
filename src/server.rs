@@ -35,10 +35,10 @@ impl Server {
         let (send_queue, rcv_queue) = crossbeam_channel::bounded(1000);
         let stop_flag = Arc::new(AtomicBool::new(false));
 
-        let admin_srv = run_http_listener(
+        let http_srv = run_http_listener(
             stop_flag.clone(),
             conf.service.listening_port,
-            "admin_srv",
+            "http_srv",
             &send_queue,
         )?;
 
@@ -47,7 +47,7 @@ impl Server {
 
         let server = Self {
             conf: conf.clone(),
-            http_srv: admin_srv,
+            http_srv,
             engine,
             updater,
             stop_flag,
@@ -88,8 +88,12 @@ fn run_http_listener(
     th_name: &str,
     send_queue: &Sender<HttpTask>,
 ) -> Result<JoinHandle<()>, Error> {
-    let bind_addr = format!("0.0.0.0:{}", port);
-    log::info!("thread {} (bind: {}) starting...", th_name, bind_addr);
+    let bind_addr = format!("127.0.0.1:{}", port);
+    log::info!(
+        "thread {} (bind: http://{}) starting...",
+        th_name,
+        bind_addr
+    );
 
     let send_queue = send_queue.clone();
     let th_builder = thread::Builder::new().name(th_name.to_string());
@@ -124,7 +128,7 @@ fn service_loop(
 }
 
 fn handle_connection(req: tiny_http::Request, queue: &Sender<HttpTask>) {
-    log::debug!(
+    log::trace!(
         "received request! method: {:?}, url: {:?}, headers: {:?}",
         req.method(),
         req.url(),

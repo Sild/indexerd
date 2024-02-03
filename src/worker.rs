@@ -2,7 +2,7 @@ extern crate rand;
 
 use crate::data::store::Store;
 use crate::handlers::{admin, search};
-use crate::task::{AdminTask, HttpTask, SearchTask, TaskContext};
+use crate::task::{AdminTask, HttpTask, SearchTask};
 use crate::{config, helpers};
 use crossbeam_channel::Receiver;
 use rand::Rng;
@@ -27,7 +27,7 @@ pub fn run(worker_data: WorkerData, shutdown: Arc<AtomicBool>) -> JoinHandle<()>
     thread::Builder::new()
         .name(format!("worker_{}", worker_data.num))
         .spawn(move || {
-            helpers::bind_thread((worker_data.num + 1) as usize);
+            helpers::bind_thread((2/*worker_data.num + 2*/) as usize);
             worker_loop(worker_data, shutdown)
         })
         .unwrap()
@@ -63,28 +63,19 @@ fn process(worker_data: &WorkerData, http_task: HttpTask) {
     log::debug!(
         "worker {} got request: {}",
         worker_data.num,
-        http_task.raw_req.url()
+        http_task.url()
     );
     let store_r = worker_data.store.read().unwrap();
 
-    // TODO something went wrong - I can handle /admin from non-admin port
-    if http_task.raw_req.url().starts_with("/admin") {
-        let task = AdminTask {
-            http_task,
-            context: TaskContext {
-                store: store_r.deref(),
-                config: &worker_data.config,
-            },
-        };
+    let req_url = http_task.url();
+    let store_ref = store_r.deref();
+    let config = &worker_data.config;
+
+    if req_url.starts_with("/admin") {
+        let task = AdminTask::new(http_task, store_ref, config);
         admin::handle(task);
-    } else if http_task.raw_req.url().starts_with("/search") {
-        let task = SearchTask {
-            http_task,
-            context: TaskContext {
-                store: store_r.deref(),
-                config: &worker_data.config,
-            },
-        };
+    } else if req_url.starts_with("/search") {
+        let task = SearchTask::new(http_task, store_ref, config);
         search::handle(task);
     } else {
         http_task.respond_html("unknown method")
@@ -95,7 +86,7 @@ fn process(worker_data: &WorkerData, http_task: HttpTask) {
     //     .respond(&format!("worker_num={}, result={}", worker_data.num, res))
 }
 
-fn mock_task(worker_task: &AdminTask) -> String {
+fn _mock_task(worker_task: &AdminTask) -> String {
     let mut rng = rand::thread_rng();
     let matrix_size = 5;
 
@@ -114,7 +105,7 @@ fn mock_task(worker_task: &AdminTask) -> String {
             matrix_b[i].push(rng.gen_range(0.0..999.0));
         }
     }
-    let res = matrix_multiply(&matrix_a, &matrix_b);
+    let res = _matrix_multiply(&matrix_a, &matrix_b);
 
     let mut answer = String::new();
     for row in res.iter() {
@@ -129,7 +120,7 @@ fn mock_task(worker_task: &AdminTask) -> String {
     answer
 }
 
-fn matrix_multiply(a: &Vec<Vec<f64>>, b: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+fn _matrix_multiply(a: &Vec<Vec<f64>>, b: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     let mut result = Vec::new();
 
     for i in 0..a.len() {

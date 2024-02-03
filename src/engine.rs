@@ -29,7 +29,7 @@ impl Engine {
             conf: conf.clone(),
         };
 
-        for worker_num in 0..=2 {
+        for worker_num in 0..=1 {
             let (ctl_queue_snd, ctl_queue_rcv): (Sender<ControlTask>, Receiver<ControlTask>) =
                 crossbeam_channel::bounded(1000);
 
@@ -70,6 +70,7 @@ impl Engine {
         // while counter.load(Ordering::Relaxed) < self.workers.len() {}
     }
 
+    #[allow(dead_code)]
     pub fn update_config(&mut self, conf: config::Engine) {
         self.conf = conf;
         for queue in self.ctl_queues.iter_mut() {

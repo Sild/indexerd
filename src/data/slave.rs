@@ -58,9 +58,8 @@ fn build_slave_cli_opts(db_conf: &config::DB, gtid: Option<GtidSet>) -> ReplicaO
 }
 
 pub fn slave_loop(updater: Arc<RwLock<Updater>>, start_gtid: Option<GtidSet>) {
-    let (db_conf, stop_flag) = match updater.read().expect("fail to get updater lock") {
-        lock => (lock.conf.db.clone(), lock.stop_flag.clone()),
-    };
+    let lock = updater.read().expect("fail to get updater lock");
+    let (db_conf, stop_flag) = (lock.conf.db.clone(), lock.stop_flag.clone());
 
     let mut ctx = Context {
         updater,
@@ -118,7 +117,7 @@ fn process_write(ctx: &mut Context, events: &WriteRowsEvent) {
                         &ctx.updater,
                         objects::Campaign::from_slave(ev, &ctx.fields_map),
                         None,
-                        EventType::INSERT,
+                        EventType::Insert,
                     );
                 }
                 SupportedTypes::Package => {
@@ -126,7 +125,7 @@ fn process_write(ctx: &mut Context, events: &WriteRowsEvent) {
                         &ctx.updater,
                         objects::Package::from_slave(ev, &ctx.fields_map),
                         None,
-                        EventType::INSERT,
+                        EventType::Insert,
                     );
                 }
                 SupportedTypes::Pad => {
@@ -134,7 +133,7 @@ fn process_write(ctx: &mut Context, events: &WriteRowsEvent) {
                         &ctx.updater,
                         objects::Pad::from_slave(ev, &ctx.fields_map),
                         None,
-                        EventType::INSERT,
+                        EventType::Insert,
                     );
                 }
                 SupportedTypes::PadRelation => {
@@ -142,7 +141,7 @@ fn process_write(ctx: &mut Context, events: &WriteRowsEvent) {
                         &ctx.updater,
                         objects::PadRelation::from_slave(ev, &ctx.fields_map),
                         None,
-                        EventType::INSERT,
+                        EventType::Insert,
                     );
                 }
                 SupportedTypes::TargetingPad => {
@@ -150,7 +149,7 @@ fn process_write(ctx: &mut Context, events: &WriteRowsEvent) {
                         &ctx.updater,
                         objects::TargetingPad::from_slave(ev, &ctx.fields_map),
                         None,
-                        EventType::INSERT,
+                        EventType::Insert,
                     );
                 }
                 SupportedTypes::Unknown => {}

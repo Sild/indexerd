@@ -1,9 +1,9 @@
 #[macro_use]
 extern crate indexerd_derive;
+extern crate base64;
 extern crate ctrlc;
 extern crate hwloc2;
 extern crate log;
-extern crate mysql;
 extern crate serde_json;
 
 mod config;
@@ -14,6 +14,8 @@ use std::sync::Arc;
 
 mod handlers;
 mod helpers;
+mod proto;
+mod request;
 mod server;
 mod task;
 mod worker;
@@ -48,15 +50,6 @@ fn main() -> std::io::Result<()> {
 
     // get config then
     let conf_path = get_config_path();
-
-    // let c1 = objects::Campaign::from_select();
-    // let p1 = objects::Package::from_select();
-    // let pad1 = objects::Pad::from_select();
-    //
-    // let mut data_manager = data::data_manager::DataManager::default();
-    // data_manager.insert(c1);
-    // data_manager.insert(p1);
-    // data_manager.insert(pad1);
 
     let wait_pair = Arc::new((Mutex::new(true), Condvar::new()));
 

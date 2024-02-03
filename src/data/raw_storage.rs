@@ -1,7 +1,6 @@
 use crate::data::objects::IdType;
 use crate::data::objects_traits::{MysqlObject, StorableRaw};
 use std::any::Any;
-use std::collections::hash_map::{Iter, Keys};
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -23,6 +22,7 @@ impl Storage {
             .remove(&obj.get_id());
     }
 
+    #[allow(dead_code)]
     pub fn get<T: StorableRaw + MysqlObject + 'static>(&self, id: IdType) -> &T {
         self.data
             .get(T::table())
@@ -33,6 +33,7 @@ impl Storage {
             .unwrap()
     }
 
+    #[allow(dead_code)]
     pub fn try_get<T: StorableRaw + MysqlObject + 'static>(&self, id: IdType) -> Option<&T> {
         match self.data.get(T::table()) {
             Some(objects) => match objects.get(&id) {
@@ -45,12 +46,8 @@ impl Storage {
 
     pub fn list<T: MysqlObject>(&self) -> Vec<IdType> {
         match self.data.get(T::table()) {
-            Some(objects) => Vec::from_iter(
-                objects
-                    .into_iter()
-                    .map(|(x, y)| x.clone())
-                    .collect::<Vec<_>>(),
-            ),
+            Some(objects) => Vec::from_iter(objects.iter().map(|(x, _)| *x).collect::<Vec<_>>()),
+
             None => Vec::default(),
         }
     }

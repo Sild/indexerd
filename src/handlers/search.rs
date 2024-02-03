@@ -1,5 +1,14 @@
 use crate::task::SearchTask;
 
 pub fn handle(task: SearchTask) {
-    task.http_task.respond_html("search_task");
+    match task.search_request {
+        Ok(search_req) => {
+            task.http_task
+                .respond_html(format!("search_params = {:?}", search_req).as_str());
+        }
+        Err(e) => {
+            task.http_task
+                .respond_html(format!("malformed request: {}\n{}", e, e.backtrace()).as_str());
+        }
+    }
 }
