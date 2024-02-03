@@ -67,8 +67,8 @@ fn handle_objects(task: &AdminTask) -> Result<String, Error> {
     let mut tera = Tera::default();
     tera.add_raw_template(tpl_name, tpl_data)?;
     let mut context = tera::Context::new();
-    context.insert("object_type", "package");
-    let mut objects = task.context.store.get_raw_data().list::<Package>();
+    context.insert("object_type", "campaign");
+    let mut objects = task.context.store.get_raw_data().list::<Campaign>();
     objects.sort();
     context.insert("objects", &objects);
 
