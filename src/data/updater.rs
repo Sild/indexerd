@@ -89,16 +89,12 @@ impl Updater {
 
 #[stime("info")]
 fn swap_stores(updater: &UpdaterPtr) {
-    log::debug!("swap stores...0");
-
     let mut updater_w = updater.write().unwrap();
     {
-        log::debug!("swap stores...1");
         updater_w.index_iteration.add_assign(1);
         let mut write_store_w = updater_w.write_store.write().unwrap();
         write_store_w.rebuild_index(updater_w.index_iteration);
     }
-    log::debug!("swap stores...2");
 
     let tmp = updater_w.write_store.clone();
     updater_w.write_store = updater_w.read_store.clone();
@@ -108,8 +104,6 @@ fn swap_stores(updater: &UpdaterPtr) {
         .write()
         .unwrap()
         .set_new_store(&updater_w.read_store);
-    //
-    log::debug!("swap stores...3");
 
     let slave_updates = updater_w.slave_updates.drain(..).collect::<Vec<_>>();
     // we can't access write_store until all workers switch to the new one
@@ -155,7 +149,6 @@ fn cron_loop(updater: UpdaterPtr) {
     let mut last_swap_ts = 0;
 
     while !stop_checker.is_time() {
-        log::info!("cron_loop");
         let loop_start_ts = helpers::time::cur_ts();
 
         if loop_start_ts > (last_swap_ts + updater.read().unwrap().conf.swap_interval) {

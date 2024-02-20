@@ -59,7 +59,7 @@ fn build_slave_cli_opts(db_conf: &config::DB, gtid: Option<GtidSet>) -> ReplicaO
 pub fn slave_loop(updater: UpdaterPtr, start_gtid: Option<GtidSet>) {
     let lock = updater.read().expect("fail to get updater lock");
     let (db_conf, stop_flag) = (lock.conf.db.clone(), lock.stop_flag.clone());
-
+    drop(lock);
     let mut ctx = Context {
         updater: updater.clone(),
         table_id_map: HashMap::new(),
