@@ -16,6 +16,6 @@
       "password": "dev-password",
       "db_name": "indexerd_dev_db"
     },
-    "swap_interval": 5
+    "swap_interval": 30
   }
 }

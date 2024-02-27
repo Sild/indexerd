@@ -14,6 +14,15 @@ pub struct Campaign {
     pub package_id: IdType,
 }
 
+impl Campaign {
+    pub fn html_debug(&self) -> String {
+        format!(
+            r#"id={}</br>name={}</br>package_id=<a href="/admin/store/package/{}">{}</a>"#,
+            self.id, self.name, self.package_id, self.package_id
+        )
+    }
+}
+
 #[derive(Debug, Default, Clone, FromRow, MysqlObject, StorableRaw)]
 pub struct Package {
     pub id: IdType,

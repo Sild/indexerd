@@ -8,7 +8,8 @@ pub fn handle(task: SearchTask) {
         }
         Err(e) => {
             task.http_task
-                .respond_html(format!("malformed request: {}\n{}", e, e.backtrace()).as_str());
+                .respond_html(format!("malformed request: {}", e).as_str());
+            log::warn!("malformed request: {}\n{}", e, e.backtrace());
         }
     }
 }

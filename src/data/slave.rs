@@ -20,13 +20,26 @@ use std::time::Duration;
 
 #[derive(Debug, Hash, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
-enum SupportedTypes {
+pub enum SupportedTypes {
     Campaign,
     Package,
     Pad,
     PadRelation,
     TargetingPad,
     Unknown,
+}
+
+impl From<&str> for SupportedTypes {
+    fn from(s: &str) -> Self {
+        match s {
+            "campaign" => SupportedTypes::Campaign,
+            "package" => SupportedTypes::Package,
+            "pad" => SupportedTypes::Pad,
+            "pad_relation" => SupportedTypes::PadRelation,
+            "targeting_pad" => SupportedTypes::TargetingPad,
+            _ => SupportedTypes::Unknown,
+        }
+    }
 }
 
 pub type FieldMapping = HashMap<String, usize>;
