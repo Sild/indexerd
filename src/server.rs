@@ -1,16 +1,14 @@
-extern crate actix_web;
 extern crate crossbeam_channel;
 extern crate hwloc2;
 extern crate libc;
 extern crate tiny_http;
-extern crate tokio;
 use crate::task::HttpTask;
-use crate::{config, engine, helpers};
+use crate::{config, helpers};
 use crossbeam_channel::Sender;
 
 use std::io::Error;
 
-use crate::data::updater::Updater;
+use crate::data::updater::{Updater, UpdaterPtr};
 use crate::engine::Engine;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
@@ -22,7 +20,7 @@ pub struct Server {
     conf: config::Server,
     http_srv: JoinHandle<()>,
     engine: Arc<RwLock<Engine>>,
-    updater: Arc<RwLock<Updater>>,
+    updater: UpdaterPtr,
     stop_flag: Arc<AtomicBool>,
     wait_pair: Arc<(Mutex<bool>, Condvar)>,
 }
@@ -42,7 +40,7 @@ impl Server {
             &send_queue,
         )?;
 
-        let engine = Arc::new(RwLock::new(engine::Engine::new(&conf.engine, rcv_queue)));
+        let engine = Arc::new(RwLock::new(Engine::new(&conf.engine, rcv_queue)));
         let updater = Updater::new(&conf.updater, engine.clone()).unwrap();
 
         let server = Self {

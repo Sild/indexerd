@@ -50,6 +50,10 @@ impl Engine {
     }
 
     pub fn set_new_store(&mut self, store: &Arc<RwLock<Store>>) {
+        log::info!(
+            "set_new_store: {}",
+            store.read().unwrap().get_store_stat().iteration
+        );
         self.store = store.clone();
         // let counter = Arc::new(AtomicUsize::new(0));
         for queue in self.ctl_queues.iter_mut() {

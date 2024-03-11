@@ -1,6 +1,6 @@
 use crate::config;
 use crate::data::objects_traits::MysqlObject;
-use crate::data::updater::{EventType, Updater, UpdaterPtr};
+use crate::data::updater::{EventType, UpdaterPtr};
 use crate::data::{objects, select, updater};
 use crate::helpers::StopChecker;
 use mysql_cdc::binlog_client::BinlogClient;
@@ -16,18 +16,30 @@ use mysql_cdc::replica_options::ReplicaOptions;
 use mysql_cdc::ssl_mode::SslMode;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 #[derive(Debug, Hash, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
-enum SupportedTypes {
+pub enum SupportedTypes {
     Campaign,
     Package,
     Pad,
     PadRelation,
     TargetingPad,
     Unknown,
+}
+
+impl From<&str> for SupportedTypes {
+    fn from(s: &str) -> Self {
+        match s {
+            "campaign" => SupportedTypes::Campaign,
+            "package" => SupportedTypes::Package,
+            "pad" => SupportedTypes::Pad,
+            "pad_relation" => SupportedTypes::PadRelation,
+            "targeting_pad" => SupportedTypes::TargetingPad,
+            _ => SupportedTypes::Unknown,
+        }
+    }
 }
 
 pub type FieldMapping = HashMap<String, usize>;
@@ -57,12 +69,12 @@ fn build_slave_cli_opts(db_conf: &config::DB, gtid: Option<GtidSet>) -> ReplicaO
     }
 }
 
-pub fn slave_loop(updater: Arc<RwLock<Updater>>, start_gtid: Option<GtidSet>) {
+pub fn slave_loop(updater: UpdaterPtr, start_gtid: Option<GtidSet>) {
     let lock = updater.read().expect("fail to get updater lock");
     let (db_conf, stop_flag) = (lock.conf.db.clone(), lock.stop_flag.clone());
-
+    drop(lock);
     let mut ctx = Context {
-        updater,
+        updater: updater.clone(),
         table_id_map: HashMap::new(),
         fields_map: HashMap::new(),
         slave_cli: BinlogClient::new(build_slave_cli_opts(&db_conf, start_gtid)),

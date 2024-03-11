@@ -4,4 +4,5 @@
 /indexerd-derive/target
 Cargo.lock
 /configs/test.json
-/src/proto
+/src/proto/*.rs
+!/src/proto/mod.rs

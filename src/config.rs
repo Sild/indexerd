@@ -18,7 +18,7 @@ pub struct Service {
 #[derive(Default, Debug, Deserialize, Clone, Eq, PartialEq)]
 pub struct Updater {
     pub db: DB,
-    pub swap_interval: u16,
+    pub swap_interval: u64,
 }
 
 #[derive(Default, Debug, Deserialize, Clone, Eq, PartialEq)]

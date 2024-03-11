@@ -44,7 +44,7 @@ impl Updater {
     pub fn new(
         conf: &config::Updater,
         engine: Arc<RwLock<engine::Engine>>,
-    ) -> Result<Arc<RwLock<Updater>>, Box<dyn Error>> {
+    ) -> Result<UpdaterPtr, Box<dyn Error>> {
         let stop_flag = Arc::new(AtomicBool::new(false));
 
         let mut store_first = Store::default();
@@ -88,7 +88,7 @@ impl Updater {
 }
 
 #[stime("info")]
-fn swap_stores(updater: &Arc<RwLock<Updater>>) {
+fn swap_stores(updater: &UpdaterPtr) {
     let mut updater_w = updater.write().unwrap();
     {
         updater_w.index_iteration.add_assign(1);
@@ -104,7 +104,7 @@ fn swap_stores(updater: &Arc<RwLock<Updater>>) {
         .write()
         .unwrap()
         .set_new_store(&updater_w.read_store);
-    //
+
     let slave_updates = updater_w.slave_updates.drain(..).collect::<Vec<_>>();
     // we can't access write_store until all workers switch to the new one
     {
@@ -122,7 +122,7 @@ fn swap_stores(updater: &Arc<RwLock<Updater>>) {
     );
 }
 
-fn run_slave(updater: Arc<RwLock<Updater>>, gtid: Option<GtidSet>) -> JoinHandle<()> {
+fn run_slave(updater: UpdaterPtr, gtid: Option<GtidSet>) -> JoinHandle<()> {
     thread::Builder::new()
         .name(String::from("slave"))
         .spawn(move || {
@@ -132,7 +132,7 @@ fn run_slave(updater: Arc<RwLock<Updater>>, gtid: Option<GtidSet>) -> JoinHandle
         .expect("fail to run slave thread")
 }
 
-fn run_cron(updater: Arc<RwLock<Updater>>) -> JoinHandle<()> {
+fn run_cron(updater: UpdaterPtr) -> JoinHandle<()> {
     thread::Builder::new()
         .name(String::from("cron"))
         .spawn(move || {
@@ -143,7 +143,7 @@ fn run_cron(updater: Arc<RwLock<Updater>>) -> JoinHandle<()> {
 }
 
 #[stime("info")]
-fn cron_loop(updater: Arc<RwLock<Updater>>) {
+fn cron_loop(updater: UpdaterPtr) {
     let stop_flag = updater.read().unwrap().stop_flag.clone();
     let mut stop_checker = helpers::StopChecker::new(stop_flag);
     let mut last_swap_ts = 0;
@@ -151,7 +151,7 @@ fn cron_loop(updater: Arc<RwLock<Updater>>) {
     while !stop_checker.is_time() {
         let loop_start_ts = helpers::time::cur_ts();
 
-        if loop_start_ts > last_swap_ts + 5 {
+        if loop_start_ts > (last_swap_ts + updater.read().unwrap().conf.swap_interval) {
             swap_stores(&updater);
             last_swap_ts = loop_start_ts;
         }

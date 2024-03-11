@@ -11,9 +11,9 @@ use url::Url;
 
 #[derive(Default, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SearchParams {
-    name: String,
-    id: i32,
-    email: String,
+    pub name: String,
+    pub id: i32,
+    pub email: String,
 }
 
 #[derive(Debug, Eq, PartialEq, Display, EnumString)]
@@ -75,7 +75,7 @@ impl SearchRequest {
 impl SearchParams {
     fn try_from_bin(req_fmt: &RequestFormat, data: &str) -> Result<Self> {
         let decoded = general_purpose::STANDARD_NO_PAD.decode(data)?;
-        let decoded_str = std::str::from_utf8(&*decoded)?;
+        let decoded_str = std::str::from_utf8(&decoded)?;
 
         match req_fmt {
             RequestFormat::Json => Ok(serde_json::from_str(decoded_str)?),
