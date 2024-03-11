@@ -11,9 +11,9 @@ use url::Url;
 
 #[derive(Default, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SearchParams {
-    name: String,
-    id: i32,
-    email: String,
+    pub name: String,
+    pub id: i32,
+    pub email: String,
 }
 
 #[derive(Debug, Eq, PartialEq, Display, EnumString)]
